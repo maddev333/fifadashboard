@@ -49,15 +49,12 @@ function getVisibleWeatherSignals(weatherSignals, selectedVenue) {
   ))
 }
 
-function focusMap(map, venues, selectedVenue) {
+function focusMap(map, selectedVenue) {
   if (!map) return
 
-  const validVenues = venues.filter(hasValidLatLng)
-  const validSelectedVenue = hasValidLatLng(selectedVenue) ? selectedVenue : null
-
-  if (validSelectedVenue) {
+  if (hasValidLatLng(selectedVenue)) {
     map.setCamera({
-      center: toCoordinatePair(validSelectedVenue),
+      center: toCoordinatePair(selectedVenue),
       zoom: FOCUSED_VENUE_ZOOM,
       type: 'ease',
       duration: 1200
@@ -65,21 +62,12 @@ function focusMap(map, venues, selectedVenue) {
     return
   }
 
-  if (!validVenues.length) return
-
-  try {
-    map.setCamera({
-      bounds: atlas.data.BoundingBox.fromData(validVenues.map(toCoordinatePair)),
-      padding: 60
-    })
-  } catch {
-    map.setCamera({
-      center: DEFAULT_ALL_VENUES_CENTER,
-      zoom: DEFAULT_ALL_VENUES_ZOOM,
-      type: 'ease',
-      duration: 1200
-    })
-  }
+  map.setCamera({
+    center: DEFAULT_ALL_VENUES_CENTER,
+    zoom: DEFAULT_ALL_VENUES_ZOOM,
+    type: 'ease',
+    duration: 1200
+  })
 }
 
 function getWeatherTileTimestamp(date = new Date()) {
@@ -234,7 +222,7 @@ export default function LiveMap() {
       clickHandlerRef.current = handleMapClick
       map.events.add('click', clickHandlerRef.current)
 
-      focusMap(map, validVenues, selectedVenue)
+      focusMap(map, selectedVenue)
       setMapReady(true)
     }
 
@@ -272,10 +260,10 @@ export default function LiveMap() {
 
   useEffect(() => {
     const map = mapRef.current
-    if (!mapReady || !map || !validVenues.length) return
+    if (!mapReady || !map) return
 
-    focusMap(map, validVenues, selectedVenue)
-  }, [mapReady, validVenues, selectedVenue])
+    focusMap(map, selectedVenue)
+  }, [mapReady, selectedVenue])
 
   useEffect(() => {
     const map = mapRef.current
