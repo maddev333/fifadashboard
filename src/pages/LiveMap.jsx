@@ -5,6 +5,8 @@ import { useData } from '../hooks/useData'
 
 const AZURE_MAPS_KEY = import.meta.env.VITE_AZURE_MAPS_KEY
 const WEATHER_REFRESH_MS = 10 * 60 * 1000
+const FOCUSED_VENUE_ZOOM = 11
+const FOCUSED_WEATHER_RADIUS_METERS = 25000
 
 function isFiniteCoordinate(value) {
   return value != null && value !== '' && Number.isFinite(Number(value))
@@ -93,6 +95,30 @@ async function fetchVenueWeather(venue, signal) {
   }
 }
 
+function getDistanceInMeters(a, b) {
+  if (!hasValidLatLng(a) || !hasValidLatLng(b)) return Number.POSITIVE_INFINITY
+
+  const earthRadius = 6371000
+  const toRadians = degrees => (degrees * Math.PI) / 180
+  const lat1 = toRadians(Number(a.lat))
+  const lat2 = toRadians(Number(b.lat))
+  const deltaLat = lat2 - lat1
+  const deltaLng = toRadians(Number(b.lng) - Number(a.lng))
+  const haversine =
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2
+
+  return 2 * earthRadius * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
+}
+
+function getVisibleWeatherSignals(weatherSignals, selectedVenue) {
+  if (!hasValidLatLng(selectedVenue)) return weatherSignals
+
+  return weatherSignals.filter(signal => (
+    signal.venueId === selectedVenue.id || getDistanceInMeters(signal, selectedVenue) <= FOCUSED_WEATHER_RADIUS_METERS
+  ))
+}
+
 function focusMap(map, venues, selectedVenue) {
   if (!map) return
 
@@ -102,7 +128,7 @@ function focusMap(map, venues, selectedVenue) {
   if (validSelectedVenue) {
     map.setCamera({
       center: toCoordinatePair(validSelectedVenue),
-      zoom: 11,
+      zoom: FOCUSED_VENUE_ZOOM,
       type: 'ease',
       duration: 1200
     })
@@ -150,6 +176,10 @@ export default function LiveMap() {
   const [weatherMode, setWeatherMode] = useState('loading')
   const [weatherStatus, setWeatherStatus] = useState('Loading live venue weather…')
   const fallbackWeatherSignals = useMemo(() => buildFallbackWeatherSignals(validVenues), [validVenues])
+  const visibleWeatherSignals = useMemo(
+    () => getVisibleWeatherSignals(weatherSignals, selectedVenue),
+    [weatherSignals, selectedVenue]
+  )
 
   useEffect(() => {
     setWeatherSignals(fallbackWeatherSignals)
@@ -232,7 +262,7 @@ export default function LiveMap() {
     const map = new atlas.Map(mapContainer.current, {
       view: 'Auto',
       center: initialCenter,
-      zoom: hasValidLatLng(selectedVenue) ? 11 : 3,
+      zoom: hasValidLatLng(selectedVenue) ? FOCUSED_VENUE_ZOOM : 3,
       style: 'grayscale_dark',
       authOptions: {
         authType: atlas.AuthenticationType.subscriptionKey,
@@ -390,7 +420,7 @@ export default function LiveMap() {
     }
 
     if (showWeather) {
-      source.add(weatherSignals.map(signal => new atlas.data.Feature(
+      source.add(visibleWeatherSignals.map(signal => new atlas.data.Feature(
         new atlas.data.Point(toCoordinatePair(signal)),
         {
           layerType: 'weather',
@@ -401,7 +431,7 @@ export default function LiveMap() {
         }
       )))
     }
-  }, [mapReady, validVenues, validIncidents, showVenues, showIncidents, showWeather, weatherSignals])
+  }, [mapReady, validVenues, validIncidents, showVenues, showIncidents, showWeather, visibleWeatherSignals])
 
   const renderFallback = () => (
     <div style={{ background: '#1e293b', borderRadius: 8, padding: '1rem', border: '1px solid #334155' }}>
@@ -428,7 +458,7 @@ export default function LiveMap() {
         <div>
           <h3>Operational overlays</h3>
           <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Live Azure Maps traffic flow available when toggled on</div>
-          <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Weather markers shown for all venues: {weatherSignals.length}</div>
+          <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Weather markers shown for visible venues: {visibleWeatherSignals.length}</div>
           <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Open incidents: {incidents.filter(i => i.status === 'open').length}</div>
         </div>
       </div>
