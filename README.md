@@ -73,11 +73,12 @@ Since GitHub Pages is purely static, the Azure Maps subscription key is exposed 
    npm install
    ```
 
-2. **Update your repo name in `vite.config.js`**
-   ```js
-   const BASE = '/fifadashboard/'
+2. **Configure your environment**
+   ```bash
+   cp .env.example .env
+   # edit .env — set BASE_PATH to match your repo name for production builds
    ```
-   > If your repo is `yourusername.github.io/fifadashboard`, keep it exactly as written. If your repo name differs, change this value.
+   > Local dev defaults to `/` automatically. For GitHub Pages, `BASE_PATH` should be `/your-repo-name/`.
 
 3. **Update `package.json` homepage**
    ```json
@@ -93,19 +94,52 @@ Since GitHub Pages is purely static, the Azure Maps subscription key is exposed 
 
 ## Deploy to GitHub Pages
 
-### Enable Pages
+### 1. Configure Pages source
 1. Push this repo to GitHub.
 2. Go to **Settings → Pages → Build and deployment**.
-3. Set **Source** to **GitHub Actions**.
+3. Set **Source** to **GitHub Actions** (NOT a branch).
+   > ⚠️ If you accidentally leave it set to "Deploy from a branch", GitHub Pages will serve the raw source files — the browser will try to load `/src/main.jsx` and you'll get a 404.
 
-### Deploy
+### 2. Set base path
+The base path must match your repository name so asset URLs resolve correctly.
+
+Option A — Repository variable (recommended):
+- Go to **Settings → Secrets and variables → Actions → Variables**
+- Name: `BASE_PATH`
+- Value: `/your-repo-name/` (e.g. `/fifadashboard/`)
+
+Option B — Fallback default:
+- Edit `vite.config.js` and change the fallback: `env.BASE_PATH || '/your-repo-name/'`
+
+### 3. Deploy
 The included `.github/workflows/deploy.yml` will automatically build and deploy on every push to `main`.
 
 Alternatively, deploy manually with:
 ```bash
-npm run build
+BASE_PATH=/your-repo-name/ npm run build
 # then upload the `dist/` folder via the Pages settings
 ```
+
+---
+
+## Troubleshooting
+
+### `main.jsx:1  Failed to load resource: 404`
+This means the browser is loading the **raw source** `index.html` instead of the **built** `dist/index.html`. Check:
+
+1. **Pages source** must be set to **GitHub Actions**, not a branch.
+   - `Settings → Pages → Build and deployment → Source: GitHub Actions`
+   - If it says "Deploy from a branch", change it.
+2. **Build succeeded** — check the Actions tab for a green checkmark on the latest run.
+3. **Base path matches repo name** — if your repo is `fifa-ops` but the base path is `/fifadashboard/`, all JS/CSS assets will 404.
+   - Set the `BASE_PATH` repository variable (see Deploy section above).
+4. **Browser cache** — hard-refresh (`Ctrl+Shift+R` or `Cmd+Shift+R`) after fixing.
+
+### All assets 404 but no console errors
+The `base` path in Vite doesn't match the GitHub Pages URL. Example:
+- Your repo name: `world-cup-ops-site`
+- Your Pages URL: `https://user.github.io/world-cup-ops-site/`
+- Set `BASE_PATH=/world-cup-ops-site/`
 
 ---
 
@@ -125,12 +159,17 @@ If you want to move to a real backend later, swap the `useData` hook for `fetch(
    cp .env.example .env
    # edit .env
    ```
-3. For GitHub Actions deployment, add the key as a repository secret:
-   - Go to **Settings → Secrets and variables → Actions → New repository secret**
+3. For GitHub Actions deployment, add the key as an **environment secret** (recommended over repository secrets so it only exposes during the Pages deploy job):
+   - Go to **Settings → Environments**
+   - Click the `github-pages` environment (or create it if it doesn't exist)
+   - Select **Add environment secret**
    - Name: `VITE_AZURE_MAPS_KEY`
    - Value: your Azure Maps key
+   - (Optional: add protection rules like required reviewers or deployment branches)
 4. **Restrict the key** in the Azure Portal by HTTP referrer to prevent abuse:
    - `https://yourusername.github.io/*`
+
+> **Note:** Because the workflow already declares `environment: github-pages`, `${{ secrets.VITE_AZURE_MAPS_KEY }}` will automatically prefer the environment secret. If no environment secret exists, it falls back to a repository secret with the same name.
 
 ---
 

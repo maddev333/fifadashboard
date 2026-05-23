@@ -31,6 +31,7 @@ jobs:
       - name: Build
         env:
           VITE_AZURE_MAPS_KEY: ${{ secrets.VITE_AZURE_MAPS_KEY }}
+          BASE_PATH: ${{ vars.BASE_PATH }}
         run: npm run build
       - name: Setup Pages
         uses: actions/configure-pages@v4
