@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { useData } from '../hooks/useData'
 import { useAlerts } from '../hooks/useAlerts'
 
@@ -81,7 +82,15 @@ export default function Dashboard() {
           {todayMatches.map(m => (
             <div key={m.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid #334155', color: '#e2e8f0' }}>
               <strong>{m.homeTeam}</strong> vs <strong>{m.awayTeam}</strong>
-              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{m.timeLocal} @ {venues.find(v => v.id === m.venueId)?.name || m.venueId}</div>
+              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                {m.timeLocal} @{' '}
+                <Link
+                  to={`/map?venue=${encodeURIComponent(m.venueId)}`}
+                  style={{ color: '#38bdf8', textDecoration: 'none', fontWeight: 600 }}
+                >
+                  {venues.find(v => v.id === m.venueId)?.name || m.venueId}
+                </Link>
+              </div>
             </div>
           ))}
         </div>
@@ -123,7 +132,14 @@ export default function Dashboard() {
           <tbody>
             {venues.map(v => (
               <tr key={v.id} style={{ borderTop: '1px solid #334155' }}>
-                <td style={{ padding: '0.5rem 0' }}>{v.name}</td>
+                <td style={{ padding: '0.5rem 0' }}>
+                  <Link
+                    to={`/map?venue=${encodeURIComponent(v.id)}`}
+                    style={{ color: '#38bdf8', textDecoration: 'none', fontWeight: 600 }}
+                  >
+                    {v.name}
+                  </Link>
+                </td>
                 <td>{v.city}</td>
                 <td style={{ color: v.status === 'ready' ? '#22c55e' : '#f59e0b', textTransform: 'capitalize' }}>{v.status}</td>
                 <td style={{ textTransform: 'capitalize' }}>{v.riskLevel}</td>
