@@ -35,7 +35,7 @@ export default function LiveMap() {
   const { data: incidents } = useData('incidents')
   const [showVenues, setShowVenues] = useState(true)
   const [showIncidents, setShowIncidents] = useState(true)
-  const [showTraffic, setShowTraffic] = useState(true)
+  const [showTraffic, setShowTraffic] = useState(false)
   const [showWeather, setShowWeather] = useState(true)
   const [mapReady, setMapReady] = useState(false)
   const weatherSignals = useMemo(() => buildWeatherSignals(venues), [venues])
@@ -68,7 +68,7 @@ export default function LiveMap() {
       const geometryType = shape.getType?.()
       const coordinates = geometryType === 'Point'
         ? shape.getCoordinates()
-        : map.pixelToPosition(event.position)
+        : event.position
 
       popupRef.current.setOptions({
         content: `<div style="padding:10px;font-family:sans-serif;min-width:220px">
@@ -121,11 +121,6 @@ export default function LiveMap() {
         filter: ['==', ['get', 'layerType'], 'weather']
       }))
 
-      map.setTraffic({
-        flow: showTraffic,
-        incidents: false
-      })
-
       clickHandlerRef.current = handleMapClick
       map.events.add('click', clickHandlerRef.current)
 
@@ -163,7 +158,7 @@ export default function LiveMap() {
       mapRef.current = null
       map.dispose()
     }
-  }, [venues, showTraffic])
+  }, [venues])
 
   useEffect(() => {
     const map = mapRef.current
@@ -253,7 +248,7 @@ export default function LiveMap() {
         </div>
         <div>
           <h3>Operational overlays</h3>
-          <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Live Azure Maps traffic flow available when map is enabled</div>
+          <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Live Azure Maps traffic flow available when toggled on</div>
           <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Weather markers modeled for all venues: {weatherSignals.length}</div>
           <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Open incidents: {incidents.filter(i => i.status === 'open').length}</div>
         </div>
