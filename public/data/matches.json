@@ -1,0 +1,38 @@
+[
+  {
+    "id": "match-001",
+    "date": "2026-06-11",
+    "stage": "Group Stage",
+    "group": "A",
+    "homeTeam": "Mexico",
+    "awayTeam": "South Africa",
+    "venueId": "mexico-city-stadium",
+    "timeLocal": "15:00",
+    "timeET": "16:00",
+    "broadcaster": "FOX"
+  },
+  {
+    "id": "match-002",
+    "date": "2026-06-11",
+    "stage": "Group Stage",
+    "group": "B",
+    "homeTeam": "USA",
+    "awayTeam": "Wales",
+    "venueId": "la-rose-bowl",
+    "timeLocal": "19:00",
+    "timeET": "22:00",
+    "broadcaster": "FOX"
+  },
+  {
+    "id": "match-003",
+    "date": "2026-06-12",
+    "stage": "Group Stage",
+    "group": "C",
+    "homeTeam": "Canada",
+    "awayTeam": "Argentina",
+    "venueId": "toronto-bmo",
+    "timeLocal": "14:00",
+    "timeET": "14:00",
+    "broadcaster": "TSN"
+  }
+]

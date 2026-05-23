@@ -1,0 +1,22 @@
+[
+  {
+    "id": "alt-3001",
+    "timestamp": "2026-06-11T13:30:00Z",
+    "severity": "critical",
+    "title": "Weather advisory issued",
+    "message": "Thunderstorm watch for venue district.",
+    "scope": "venue",
+    "venueId": "mexico-city-stadium",
+    "recommendedAction": "Monitor lightning protocol."
+  },
+  {
+    "id": "alt-3002",
+    "timestamp": "2026-06-11T11:00:00Z",
+    "severity": "medium",
+    "title": "Parking lot B at capacity",
+    "message": "Overflow parking redirected to Lot D.",
+    "scope": "venue",
+    "venueId": "la-rose-bowl",
+    "recommendedAction": "Update signage."
+  }
+]

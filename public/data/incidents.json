@@ -1,0 +1,28 @@
+[
+  {
+    "id": "inc-1001",
+    "timestamp": "2026-06-11T14:05:00Z",
+    "type": "traffic",
+    "severity": "high",
+    "title": "Major congestion near venue perimeter",
+    "description": "Heavy inbound traffic causing delays.",
+    "venueId": "mexico-city-stadium",
+    "lat": 19.43,
+    "lng": -99.14,
+    "status": "open",
+    "source": "Traffic API"
+  },
+  {
+    "id": "inc-1002",
+    "timestamp": "2026-06-11T10:30:00Z",
+    "type": "security",
+    "severity": "medium",
+    "title": "Unauthorized drone activity",
+    "description": "Drone spotted near restricted airspace. Monitoring.",
+    "venueId": "la-rose-bowl",
+    "lat": 34.162,
+    "lng": -118.168,
+    "status": "open",
+    "source": "Security Patrol"
+  }
+]

@@ -1,0 +1,35 @@
+[
+  {
+    "id": "asg-2001",
+    "employeeName": "Jordan Lee",
+    "role": "Field Operations",
+    "date": "2026-06-11",
+    "venueId": "mexico-city-stadium",
+    "shift": "AM",
+    "assignmentType": "Game Coverage",
+    "lead": true,
+    "status": "assigned"
+  },
+  {
+    "id": "asg-2002",
+    "employeeName": "Sarah Kim",
+    "role": "Transport",
+    "date": "2026-06-11",
+    "venueId": "la-rose-bowl",
+    "shift": "PM",
+    "assignmentType": "Game Coverage",
+    "lead": false,
+    "status": "assigned"
+  },
+  {
+    "id": "asg-2003",
+    "employeeName": "Alex Rivera",
+    "role": "Security",
+    "date": "2026-06-11",
+    "venueId": "toronto-bmo",
+    "shift": "AM",
+    "assignmentType": "Venue Prep",
+    "lead": false,
+    "status": "open"
+  }
+]

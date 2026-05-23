@@ -1,0 +1,35 @@
+[
+  {
+    "id": "mexico-city-stadium",
+    "name": "Mexico City Stadium",
+    "city": "Mexico City",
+    "country": "Mexico",
+    "lat": 19.4326,
+    "lng": -99.1332,
+    "capacity": 80000,
+    "status": "ready",
+    "riskLevel": "medium"
+  },
+  {
+    "id": "la-rose-bowl",
+    "name": "Rose Bowl",
+    "city": "Los Angeles",
+    "country": "USA",
+    "lat": 34.1613,
+    "lng": -118.1676,
+    "capacity": 90000,
+    "status": "ready",
+    "riskLevel": "low"
+  },
+  {
+    "id": "toronto-bmo",
+    "name": "BMO Field",
+    "city": "Toronto",
+    "country": "Canada",
+    "lat": 43.6332,
+    "lng": -79.4186,
+    "capacity": 45000,
+    "status": "caution",
+    "riskLevel": "medium"
+  }
+]
