@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import * as atlas from 'azure-maps-control'
 import { useData } from '../hooks/useData'
 
@@ -38,7 +38,7 @@ export default function LiveMap() {
   const [showTraffic, setShowTraffic] = useState(true)
   const [showWeather, setShowWeather] = useState(true)
   const [mapReady, setMapReady] = useState(false)
-  const weatherSignals = buildWeatherSignals(venues)
+  const weatherSignals = useMemo(() => buildWeatherSignals(venues), [venues])
 
   useEffect(() => {
     if (!AZURE_MAPS_KEY || !mapContainer.current || mapRef.current) return
@@ -49,7 +49,6 @@ export default function LiveMap() {
       center: [-100, 35],
       zoom: 3,
       style: 'grayscale_dark',
-      showTraffic: showTraffic,
       authOptions: {
         authType: atlas.AuthenticationType.subscriptionKey,
         subscriptionKey: AZURE_MAPS_KEY
@@ -122,6 +121,11 @@ export default function LiveMap() {
         filter: ['==', ['get', 'layerType'], 'weather']
       }))
 
+      map.setTraffic({
+        flow: showTraffic,
+        incidents: false
+      })
+
       clickHandlerRef.current = handleMapClick
       map.events.add('click', clickHandlerRef.current)
 
@@ -159,7 +163,7 @@ export default function LiveMap() {
       mapRef.current = null
       map.dispose()
     }
-  }, [venues])
+  }, [venues, showTraffic])
 
   useEffect(() => {
     const map = mapRef.current
@@ -177,10 +181,13 @@ export default function LiveMap() {
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map) return
+    if (!map || !mapReady) return
 
-    map.setStyle({ showTraffic })
-  }, [showTraffic])
+    map.setTraffic({
+      flow: showTraffic,
+      incidents: false
+    })
+  }, [mapReady, showTraffic])
 
   useEffect(() => {
     const source = dataSourceRef.current
