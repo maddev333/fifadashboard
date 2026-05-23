@@ -4,27 +4,27 @@
 
 ## Spec Review & Architecture Changes
 
-The original spec is well-structured for **Azure Static Web Apps + Azure Functions**. Since we're targeting **GitHub Pages**, here are the key adaptations:
+The original spec is well-structured for **Azure Static Web Apps + Azure Functions**. Since this project is currently targeting **GitHub Pages**, here are the key adaptations:
 
 | Original Spec | GitHub Pages Adaptation |
 |---|---|
 | Azure Functions (API proxy) | ❌ Not available — using **static JSON** files + direct client-side fetch |
 | Azure Maps Web SDK | ✅ Used directly. Key is baked into bundle — restrict by HTTP referrer in Azure Portal |
-| Azure AD / Entra ID auth | ➡️ Client-side "Edit Mode" toggle with **localStorage** persistence |
+| Azure AD / Entra ID auth | ➡️ Client-side demo-only **Edit Mode** with `localStorage` persistence |
 | Cosmos DB / Table Storage | ➡️ Static JSON in `/public/data/` |
-| Next.js | ➡️ **React + Vite** (simpler, faster, perfect for static export) |
-| Normal browser routing | ➡️ **Hash Router** (`/#/map`, `/#/matches`, etc.) to avoid 404s on refresh |
+| Next.js | ➡️ **React + Vite** (simpler, faster, good for static hosting) |
+| Normal browser routing | ➡️ **Hash Router** (`/#/map`, `/#/matches`) to avoid 404s on refresh |
 
 ### Security note on Azure Maps key
 Since GitHub Pages is purely static, the Azure Maps subscription key is exposed in the client-side bundle. You **must** restrict the key by HTTP referrer in the Azure Portal:
-- Allowed referrer: `https://yourusername.github.io/*`
+- Allowed referrer: `https://maddev333.github.io/*`
 - If using a custom domain, add that too.
 
-### What carries over exactly from the spec
+### What carries over from the spec
 - All 6 pages: Dashboard, Live Map, Match Ops, Intelligence Feed, Staffing, Admin
-- All JSON data models (Venue, Match, Incident, Staffing, Alert)
-- Component architecture (Header, KPI cards, Alert banner, filters)
-- The phased build plan (this scaffold covers Phases 1 and a lightweight Phase 3)
+- JSON data models (Venue, Match, Incident, Staffing, Alert)
+- Component architecture (header, KPI cards, alert banner, filters)
+- The phased build plan (this scaffold covers Phase 1 plus a lightweight demo admin flow)
 - Dark command-center aesthetic
 
 ---
@@ -43,6 +43,9 @@ Since GitHub Pages is purely static, the Azure Maps subscription key is exposed 
 ├── src/
 │   ├── components/
 │   │   └── Header.jsx
+│   ├── hooks/
+│   │   ├── useAlerts.js
+│   │   └── useData.js
 │   ├── pages/
 │   │   ├── Dashboard.jsx
 │   │   ├── LiveMap.jsx
@@ -50,8 +53,6 @@ Since GitHub Pages is purely static, the Azure Maps subscription key is exposed 
 │   │   ├── IntelligenceFeed.jsx
 │   │   ├── Staffing.jsx
 │   │   └── Admin.jsx
-│   ├── hooks/
-│   │   └── useData.js
 │   ├── styles/
 │   │   └── global.css
 │   ├── App.jsx
@@ -73,18 +74,13 @@ Since GitHub Pages is purely static, the Azure Maps subscription key is exposed 
    npm install
    ```
 
-2. **Update your repo name in `vite.config.js`**
+2. **Confirm the production base path**
+   `vite.config.js` is already configured for this repository:
    ```js
-   const BASE = '/fifadashboard/'
-   ```
-   > If your repo is `yourusername.github.io/fifadashboard`, keep it exactly as written. If your repo name differs, change this value.
-
-3. **Update `package.json` homepage**
-   ```json
-   "homepage": "https://yourusername.github.io/fifadashboard"
+   const BASE = process.env.NODE_ENV === 'production' ? '/fifadashboard/' : '/'
    ```
 
-4. **Run locally**
+3. **Run locally**
    ```bash
    npm run dev
    ```
@@ -99,21 +95,15 @@ Since GitHub Pages is purely static, the Azure Maps subscription key is exposed 
 3. Set **Source** to **GitHub Actions**.
 
 ### Deploy
-The included `.github/workflows/deploy.yml` will automatically build and deploy on every push to `main`.
-
-Alternatively, deploy manually with:
-```bash
-npm run build
-# then upload the `dist/` folder via the Pages settings
-```
+The included `.github/workflows/deploy.yml` will build and deploy on every push to `main`.
 
 ---
 
 ## How to customize data
 
-All operational data lives in `/public/data/*.json`. Edit these files and push — they'll be deployed immediately with the next build.
+All operational data lives in `/public/data/*.json`. Edit these files and push — they will deploy with the next build.
 
-If you want to move to a real backend later, swap the `useData` hook for `fetch()` calls to your API.
+If you want to move to a real backend later, replace the `useData` and `useAlerts` hooks with authenticated API calls.
 
 ---
 
@@ -129,17 +119,20 @@ If you want to move to a real backend later, swap the `useData` hook for `fetch(
    - Go to **Settings → Secrets and variables → Actions → New repository secret**
    - Name: `VITE_AZURE_MAPS_KEY`
    - Value: your Azure Maps key
-4. **Restrict the key** in the Azure Portal by HTTP referrer to prevent abuse:
-   - `https://yourusername.github.io/*`
+4. Restrict the key in the Azure Portal by HTTP referrer:
+   - `https://maddev333.github.io/*`
+
+If the key is missing, the Live Map page now falls back to an operations summary instead of leaving a blank map container.
 
 ---
 
 ## Admin / Edit Mode
 
-Because there's no server, the Admin page uses a simple toggle + `localStorage`:
+Because there is no backend, the Admin page is a demo-only client workflow:
 - Click **Enable Edit Mode**
-- Post new alerts — they persist in your browser's localStorage
-- In a real deployment, you'd replace this with an authenticated backend or a serverless function elsewhere
+- Post new alerts — they persist in your browser's local storage
+- Dashboard and other alert-driven views can read those custom alerts through a shared hook
+- For production, replace this with authenticated storage or serverless APIs
 
 ---
 
