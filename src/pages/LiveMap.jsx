@@ -334,8 +334,6 @@ export default function LiveMap() {
       map.sources.add(source)
       dataSourceRef.current = source
 
-      syncWeatherOverlay(map, showWeather)
-
       map.layers.add(new atlas.layer.SymbolLayer(source, 'venue-points', {
         iconOptions: {
           image: 'pin-round-darkblue',
@@ -405,7 +403,7 @@ export default function LiveMap() {
       mapRef.current = null
       map.dispose()
     }
-  }, [validVenues, selectedVenue, showWeather])
+  }, [validVenues, selectedVenue])
 
   useEffect(() => {
     const map = mapRef.current
