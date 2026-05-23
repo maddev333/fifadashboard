@@ -28,7 +28,7 @@ Since GitHub Pages is purely static, the Azure Maps subscription key is exposed 
 - Dark command-center aesthetic
 
 ### Live traffic and weather note
-This repository now uses the Azure Maps Web SDK traffic flow visualization directly on the Live Map page when a valid Azure Maps key is configured. Weather overlays remain simulated from venue data in the current GitHub Pages static deployment because there is no secure backend proxy for Azure Maps Weather REST calls.
+This repository now uses the Azure Maps Web SDK traffic flow visualization directly on the Live Map page when a valid Azure Maps key is configured. It also loads live venue weather client-side from the Azure Maps Current Conditions REST endpoint and falls back to simulated venue weather if individual venue calls fail.
 
 ---
 
@@ -181,12 +181,16 @@ If the key is missing, the Live Map page now falls back to an operations summary
 
 > **Note:** Because the workflow already declares `environment: github-pages`, `${{ secrets.VITE_AZURE_MAPS_KEY }}` will automatically prefer the environment secret. If no environment secret exists, it falls back to a repository secret with the same name.
 
-### Enabling true live Azure Maps traffic and weather
-For a production-grade live traffic flow layer and real weather data:
-1. Use the Azure Maps Web SDK traffic visualization with a valid Azure Maps key for client-side live traffic rendering.
-2. Move weather and any advanced REST-backed overlays behind a secure backend (Azure Static Web Apps + Azure Functions recommended).
-3. Keep REST subscription keys and signed requests out of the browser bundle.
-4. Refresh backend-driven overlays on an interval (e.g. every 5 minutes for weather, every 60 seconds for traffic-dependent analytics).
+### Enabling live traffic and live weather on GitHub Pages
+For the fastest implementation on the current static deployment:
+1. Keep the Azure Maps Web SDK traffic visualization enabled client-side.
+2. Call Azure Maps Current Conditions directly from the browser for each venue.
+3. Restrict the Azure Maps key by HTTP referrer because the key is still exposed in the static bundle.
+4. Refresh client-side venue weather periodically (currently every 10 minutes).
+5. Fall back to simulated venue weather whenever a venue request fails so the map remains fully populated.
+
+### When to move weather behind a backend
+Move weather and other REST-backed overlays behind Azure Functions or another backend when you need stronger key protection, request signing, aggregation, rate limiting, or higher-frequency refresh behavior.
 
 ---
 

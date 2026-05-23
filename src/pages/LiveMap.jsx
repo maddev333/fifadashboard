@@ -3,24 +3,77 @@ import * as atlas from 'azure-maps-control'
 import { useData } from '../hooks/useData'
 
 const AZURE_MAPS_KEY = import.meta.env.VITE_AZURE_MAPS_KEY
+const WEATHER_REFRESH_MS = 10 * 60 * 1000
 
 function getWeatherColor(condition) {
   switch (condition) {
     case 'Storm': return '#8b5cf6'
     case 'Rain': return '#0ea5e9'
     case 'Clouds': return '#94a3b8'
+    case 'Snow': return '#e2e8f0'
     default: return '#facc15'
   }
 }
 
-function buildWeatherSignals(venues) {
+function buildFallbackWeatherSignals(venues) {
   const conditions = ['Clear', 'Clouds', 'Rain', 'Storm']
   return venues.map((venue, index) => ({
-    ...venue,
+    venueId: venue.id,
+    name: venue.name,
+    lat: venue.lat,
+    lng: venue.lng,
     condition: conditions[index % conditions.length],
     temperatureF: 68 + (index % 7) * 3,
-    windMph: 6 + (index % 6) * 2
+    windMph: 6 + (index % 6) * 2,
+    source: 'Fallback simulation',
+    isLive: false
   }))
+}
+
+function normalizeCondition(iconCode = '') {
+  const code = iconCode.toString().toLowerCase()
+  if (code.includes('thunder') || code.includes('storm')) return 'Storm'
+  if (code.includes('rain') || code.includes('shower') || code.includes('drizzle')) return 'Rain'
+  if (code.includes('snow') || code.includes('ice') || code.includes('flurr')) return 'Snow'
+  if (code.includes('cloud') || code.includes('overcast') || code.includes('fog')) return 'Clouds'
+  return 'Clear'
+}
+
+async function fetchVenueWeather(venue, signal) {
+  const response = await fetch(
+    `https://atlas.microsoft.com/weather/currentConditions/json?api-version=1.1&query=${venue.lat},${venue.lng}&subscription-key=${AZURE_MAPS_KEY}&unit=imperial`,
+    { signal }
+  )
+
+  if (!response.ok) {
+    throw new Error(`Weather fetch failed for ${venue.name}`)
+  }
+
+  const payload = await response.json()
+  const result = payload?.results?.[0]
+
+  if (!result) {
+    throw new Error(`No weather returned for ${venue.name}`)
+  }
+
+  const phrase = result.phrase || result.iconPhrase || 'Clear'
+  const condition = normalizeCondition(phrase)
+  const temperatureF = Math.round(result.temperature?.value ?? result.temperature?.imperial?.value ?? 0)
+  const windMph = Math.round(result.wind?.speed?.value ?? result.wind?.speed?.imperial?.value ?? 0)
+
+  return {
+    venueId: venue.id,
+    name: venue.name,
+    lat: venue.lat,
+    lng: venue.lng,
+    condition,
+    temperatureF,
+    windMph,
+    source: 'Azure Maps Current Conditions',
+    isLive: true,
+    phrase,
+    fetchedAt: new Date().toISOString()
+  }
 }
 
 export default function LiveMap() {
@@ -31,6 +84,8 @@ export default function LiveMap() {
   const readyHandlerRef = useRef(null)
   const clickHandlerRef = useRef(null)
   const isDisposedRef = useRef(false)
+  const weatherAbortRef = useRef(null)
+  const weatherRefreshRef = useRef(null)
   const { data: venues } = useData('venues')
   const { data: incidents } = useData('incidents')
   const [showVenues, setShowVenues] = useState(true)
@@ -38,7 +93,78 @@ export default function LiveMap() {
   const [showTraffic, setShowTraffic] = useState(false)
   const [showWeather, setShowWeather] = useState(true)
   const [mapReady, setMapReady] = useState(false)
-  const weatherSignals = useMemo(() => buildWeatherSignals(venues), [venues])
+  const [weatherSignals, setWeatherSignals] = useState([])
+  const [weatherMode, setWeatherMode] = useState('loading')
+  const [weatherStatus, setWeatherStatus] = useState('Loading live venue weather…')
+  const fallbackWeatherSignals = useMemo(() => buildFallbackWeatherSignals(venues), [venues])
+
+  useEffect(() => {
+    setWeatherSignals(fallbackWeatherSignals)
+    setWeatherMode(fallbackWeatherSignals.length ? 'fallback' : 'loading')
+    setWeatherStatus(
+      fallbackWeatherSignals.length
+        ? 'Showing fallback weather until live Azure Maps conditions load.'
+        : 'Loading venue coverage…'
+    )
+  }, [fallbackWeatherSignals])
+
+  useEffect(() => {
+    if (!AZURE_MAPS_KEY || !venues.length) return
+
+    let active = true
+
+    const loadWeather = async () => {
+      weatherAbortRef.current?.abort()
+      const controller = new AbortController()
+      weatherAbortRef.current = controller
+      setWeatherMode(current => current === 'live' ? 'live' : 'loading')
+      setWeatherStatus('Refreshing live venue weather from Azure Maps…')
+
+      const settled = await Promise.allSettled(
+        venues.map(venue => fetchVenueWeather(venue, controller.signal))
+      )
+
+      if (!active || controller.signal.aborted) return
+
+      const live = settled
+        .filter(result => result.status === 'fulfilled')
+        .map(result => result.value)
+
+      const failedCount = settled.length - live.length
+
+      if (live.length) {
+        const merged = venues.map(venue => {
+          const found = live.find(item => item.venueId === venue.id)
+          return found || fallbackWeatherSignals.find(item => item.venueId === venue.id)
+        })
+
+        setWeatherSignals(merged.filter(Boolean))
+        setWeatherMode(failedCount ? 'mixed' : 'live')
+        setWeatherStatus(
+          failedCount
+            ? `Live weather loaded for ${live.length}/${venues.length} venues. Remaining venues use fallback conditions.`
+            : `Live weather loaded for all ${live.length} venues.`
+        )
+      } else {
+        setWeatherSignals(fallbackWeatherSignals)
+        setWeatherMode('fallback')
+        setWeatherStatus('Azure Maps weather calls failed, so fallback venue weather is shown.')
+      }
+    }
+
+    loadWeather()
+    weatherRefreshRef.current = window.setInterval(loadWeather, WEATHER_REFRESH_MS)
+
+    return () => {
+      active = false
+      weatherAbortRef.current?.abort()
+      weatherAbortRef.current = null
+      if (weatherRefreshRef.current) {
+        window.clearInterval(weatherRefreshRef.current)
+        weatherRefreshRef.current = null
+      }
+    }
+  }, [venues, fallbackWeatherSignals])
 
   useEffect(() => {
     if (!AZURE_MAPS_KEY || !mapContainer.current || mapRef.current) return
@@ -223,7 +349,7 @@ export default function LiveMap() {
           color: getWeatherColor(signal.condition),
           title: `${signal.name} weather`,
           subtitle: `${signal.condition} • ${signal.temperatureF}°F`,
-          detail: `Wind ${signal.windMph} mph (simulated)`
+          detail: `Wind ${signal.windMph} mph • ${signal.source}${signal.phrase ? ` • ${signal.phrase}` : ''}`
         }
       )))
     }
@@ -234,7 +360,7 @@ export default function LiveMap() {
       <h2 style={{ marginTop: 0 }}>Map Preview Unavailable</h2>
       <p style={{ color: '#cbd5e1' }}>
         Add <code>VITE_AZURE_MAPS_KEY</code> to enable the interactive Azure Maps experience.
-        Venue coverage and incident overlays are preconfigured in data, and weather markers remain simulated.
+        Venue coverage and incident overlays are preconfigured in data, and venue weather falls back to static simulation.
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
         <div>
@@ -249,7 +375,7 @@ export default function LiveMap() {
         <div>
           <h3>Operational overlays</h3>
           <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Live Azure Maps traffic flow available when toggled on</div>
-          <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Weather markers modeled for all venues: {weatherSignals.length}</div>
+          <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Weather markers shown for all venues: {weatherSignals.length}</div>
           <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Open incidents: {incidents.filter(i => i.status === 'open').length}</div>
         </div>
       </div>
@@ -270,8 +396,18 @@ export default function LiveMap() {
           <input type="checkbox" checked={showTraffic} onChange={() => setShowTraffic(s => !s)} /> Live Traffic
         </label>
         <label style={{ color: '#cbd5e1', cursor: 'pointer' }}>
-          <input type="checkbox" checked={showWeather} onChange={() => setShowWeather(s => !s)} /> Simulated Weather
+          <input type="checkbox" checked={showWeather} onChange={() => setShowWeather(s => !s)} /> Live Weather
         </label>
+      </div>
+      <div style={{
+        background: weatherMode === 'fallback' ? '#7c2d12' : '#0f766e',
+        color: weatherMode === 'fallback' ? '#fed7aa' : '#ccfbf1',
+        padding: '0.75rem 1rem',
+        borderRadius: 6,
+        marginBottom: '0.75rem',
+        fontWeight: 600
+      }}>
+        {weatherStatus}
       </div>
       {!AZURE_MAPS_KEY && (
         <div style={{
@@ -286,7 +422,13 @@ export default function LiveMap() {
         </div>
       )}
       {AZURE_MAPS_KEY ? (
-        <div ref={mapContainer} style={{ width: '100%', height: 560, borderRadius: 8, border: '1px solid #334155' }} />
+        <>
+          <div ref={mapContainer} style={{ width: '100%', height: 560, borderRadius: 8, border: '1px solid #334155' }} />
+          <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginTop: '0.75rem' }}>
+            Live weather is loaded directly from Azure Maps Current Conditions for each venue and refreshes every 10 minutes.
+            If a venue call fails, the map keeps a fallback simulated marker for that location.
+          </p>
+        </>
       ) : renderFallback()}
     </div>
   )
