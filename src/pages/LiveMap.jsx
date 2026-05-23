@@ -7,6 +7,7 @@ const AZURE_MAPS_KEY = import.meta.env.VITE_AZURE_MAPS_KEY
 const WEATHER_REFRESH_MS = 10 * 60 * 1000
 const FOCUSED_VENUE_ZOOM = 11
 const FOCUSED_WEATHER_RADIUS_METERS = 25000
+const WEATHER_OVERLAY_ID = 'weather-radar-overlay'
 
 function isFiniteCoordinate(value) {
   return value != null && value !== '' && Number.isFinite(Number(value))
@@ -147,6 +148,35 @@ function focusMap(map, venues, selectedVenue) {
   }
 }
 
+function buildWeatherTileUrl() {
+  return `https://atlas.microsoft.com/map/tile?api-version=2.1&tilesetId=microsoft.weather.radar.main&zoom={z}&x={x}&y={y}&tileSize=256&language=en-US&timeStamp=now&subscription-key=${AZURE_MAPS_KEY}`
+}
+
+function syncWeatherOverlay(map, enabled) {
+  if (!map || !map.layers) return
+
+  const existingLayer = map.layers.getLayerById(WEATHER_OVERLAY_ID)
+
+  if (!enabled) {
+    if (existingLayer) {
+      map.layers.remove(existingLayer)
+    }
+    return
+  }
+
+  if (existingLayer) return
+
+  const weatherOverlay = new atlas.layer.TileLayer({
+    tileUrl: buildWeatherTileUrl(),
+    opacity: 0.65,
+    tileSize: 256,
+    fadeDuration: 0,
+    visible: true
+  }, WEATHER_OVERLAY_ID)
+
+  map.layers.add(weatherOverlay, 'labels')
+}
+
 export default function LiveMap() {
   const mapContainer = useRef(null)
   const mapRef = useRef(null)
@@ -225,13 +255,13 @@ export default function LiveMap() {
         setWeatherMode(failedCount ? 'mixed' : 'live')
         setWeatherStatus(
           failedCount
-            ? `Live weather loaded for ${live.length}/${validVenues.length} venues. Remaining venues use fallback conditions.`
-            : `Live weather loaded for all ${live.length} venues.`
+            ? `Live weather loaded for ${live.length}/${validVenues.length} venues. Radar overlay remains enabled.`
+            : `Live weather loaded for all ${live.length} venues with Azure Maps radar overlay enabled.`
         )
       } else {
         setWeatherSignals(fallbackWeatherSignals)
         setWeatherMode('fallback')
-        setWeatherStatus('Azure Maps weather calls failed, so fallback venue weather is shown.')
+        setWeatherStatus('Azure Maps weather calls failed, so fallback venue weather is shown while the radar overlay remains available.')
       }
     }
 
@@ -365,6 +395,10 @@ export default function LiveMap() {
         clickHandlerRef.current = null
       }
 
+      if (map.layers.getLayerById(WEATHER_OVERLAY_ID)) {
+        map.layers.remove(WEATHER_OVERLAY_ID)
+      }
+
       dataSourceRef.current = null
       mapRef.current = null
       map.dispose()
@@ -387,6 +421,13 @@ export default function LiveMap() {
       incidents: false
     })
   }, [mapReady, showTraffic])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+
+    syncWeatherOverlay(map, showWeather)
+  }, [mapReady, showWeather])
 
   useEffect(() => {
     const source = dataSourceRef.current
@@ -438,7 +479,7 @@ export default function LiveMap() {
       <h2 style={{ marginTop: 0 }}>Map Preview Unavailable</h2>
       <p style={{ color: '#cbd5e1' }}>
         Add <code>VITE_AZURE_MAPS_KEY</code> to enable the interactive Azure Maps experience.
-        Venue coverage and incident overlays are preconfigured in data, and venue weather falls back to static simulation.
+        Venue coverage, Azure Maps traffic, and a live weather radar overlay are preconfigured, while venue weather markers fall back to static simulation.
       </p>
       {selectedVenue && (
         <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: '#0f172a', borderRadius: 6, color: '#bae6fd' }}>
@@ -458,6 +499,7 @@ export default function LiveMap() {
         <div>
           <h3>Operational overlays</h3>
           <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Live Azure Maps traffic flow available when toggled on</div>
+          <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Azure Maps weather radar overlay available when toggled on</div>
           <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Weather markers shown for visible venues: {visibleWeatherSignals.length}</div>
           <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Open incidents: {incidents.filter(i => i.status === 'open').length}</div>
         </div>
@@ -494,7 +536,7 @@ export default function LiveMap() {
           <input type="checkbox" checked={showTraffic} onChange={() => setShowTraffic(s => !s)} /> Live Traffic
         </label>
         <label style={{ color: '#cbd5e1', cursor: 'pointer' }}>
-          <input type="checkbox" checked={showWeather} onChange={() => setShowWeather(s => !s)} /> Live Weather
+          <input type="checkbox" checked={showWeather} onChange={() => setShowWeather(s => !s)} /> Weather Overlay + Markers
         </label>
       </div>
       <div style={{
@@ -523,8 +565,8 @@ export default function LiveMap() {
         <>
           <div ref={mapContainer} style={{ width: '100%', height: 560, borderRadius: 8, border: '1px solid #334155' }} />
           <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginTop: '0.75rem' }}>
-            Live weather is loaded directly from Azure Maps Current Conditions for each venue and refreshes every 10 minutes.
-            If a venue call fails, the map keeps a fallback simulated marker for that location.
+            Live weather markers are loaded from Azure Maps Current Conditions for each venue and refresh every 10 minutes.
+            The Weather Overlay toggle also adds an Azure Maps radar tile layer so precipitation patterns are visible across the full map.
           </p>
         </>
       ) : renderFallback()}
