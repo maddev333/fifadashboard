@@ -179,7 +179,7 @@ export default function LiveMap() {
     if (!map || !mapReady) return
 
     map.setTraffic({
-      flow: showTraffic,
+      flow: showTraffic ? 'relative' : 'none',
       incidents: false
     })
   }, [mapReady, showTraffic])
