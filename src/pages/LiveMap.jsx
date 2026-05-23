@@ -4,7 +4,6 @@ import { useData } from '../hooks/useData'
 
 const AZURE_MAPS_KEY = import.meta.env.VITE_AZURE_MAPS_KEY
 const WEATHER_REFRESH_MS = 10 * 60 * 1000
-const BASE = import.meta.env.BASE_URL || '/'
 
 function getWeatherColor(condition) {
   switch (condition) {
@@ -42,7 +41,7 @@ function normalizeCondition(iconCode = '') {
 
 async function fetchVenueWeather(venue, signal) {
   const response = await fetch(
-    `https://atlas.microsoft.com/weather/currentConditions/json?api-version=1.1&query=${venue.lat},${venue.lng}&subscription-key=${AZURE_MAPS_KEY}`,
+    `https://atlas.microsoft.com/weather/currentConditions/json?api-version=1.1&query=${venue.lat},${venue.lng}&subscription-key=${AZURE_MAPS_KEY}&unit=imperial`,
     { signal }
   )
 
