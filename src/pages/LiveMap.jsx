@@ -6,6 +6,18 @@ import { useData } from '../hooks/useData'
 const AZURE_MAPS_KEY = import.meta.env.VITE_AZURE_MAPS_KEY
 const WEATHER_REFRESH_MS = 10 * 60 * 1000
 
+function isFiniteCoordinate(value) {
+  return value != null && value !== '' && Number.isFinite(Number(value))
+}
+
+function hasValidLatLng(item) {
+  return item && isFiniteCoordinate(item.lat) && isFiniteCoordinate(item.lng)
+}
+
+function toCoordinatePair(item) {
+  return [Number(item.lng), Number(item.lat)]
+}
+
 function getWeatherColor(condition) {
   switch (condition) {
     case 'Storm': return '#8b5cf6'
@@ -17,18 +29,22 @@ function getWeatherColor(condition) {
 }
 
 function buildFallbackWeatherSignals(venues) {
-  const conditions = ['Clear', 'Clouds', 'Rain', 'Storm']
-  return venues.map((venue, index) => ({
-    venueId: venue.id,
-    name: venue.name,
-    lat: venue.lat,
-    lng: venue.lng,
-    condition: conditions[index % conditions.length],
-    temperatureF: 68 + (index % 7) * 3,
-    windMph: 6 + (index % 6) * 2,
-    source: 'Fallback simulation',
-    isLive: false
-  }))
+  return venues
+    .filter(hasValidLatLng)
+    .map((venue, index) => {
+      const conditions = ['Clear', 'Clouds', 'Rain', 'Storm']
+      return {
+        venueId: venue.id,
+        name: venue.name,
+        lat: Number(venue.lat),
+        lng: Number(venue.lng),
+        condition: conditions[index % conditions.length],
+        temperatureF: 68 + (index % 7) * 3,
+        windMph: 6 + (index % 6) * 2,
+        source: 'Fallback simulation',
+        isLive: false
+      }
+    })
 }
 
 function normalizeCondition(iconCode = '') {
@@ -65,8 +81,8 @@ async function fetchVenueWeather(venue, signal) {
   return {
     venueId: venue.id,
     name: venue.name,
-    lat: venue.lat,
-    lng: venue.lng,
+    lat: Number(venue.lat),
+    lng: Number(venue.lng),
     condition,
     temperatureF,
     windMph,
@@ -78,22 +94,26 @@ async function fetchVenueWeather(venue, signal) {
 }
 
 function focusMap(map, venues, selectedVenue) {
-  if (!map || !venues.length) return
+  if (!map) return
 
-  if (selectedVenue) {
+  const validVenues = venues.filter(hasValidLatLng)
+  const validSelectedVenue = hasValidLatLng(selectedVenue) ? selectedVenue : null
+
+  if (validSelectedVenue) {
     map.setCamera({
-      center: [selectedVenue.lng, selectedVenue.lat],
+      center: toCoordinatePair(validSelectedVenue),
       zoom: 11,
-      padding: 60,
       type: 'ease',
       duration: 1200
     })
     return
   }
 
+  if (!validVenues.length) return
+
   try {
     map.setCamera({
-      bounds: atlas.data.BoundingBox.fromData(venues.map(v => [v.lng, v.lat])),
+      bounds: atlas.data.BoundingBox.fromData(validVenues.map(toCoordinatePair)),
       padding: 60
     })
   } catch {
@@ -119,6 +139,8 @@ export default function LiveMap() {
     () => venues.find(venue => venue.id === selectedVenueId) || null,
     [venues, selectedVenueId]
   )
+  const validVenues = useMemo(() => venues.filter(hasValidLatLng), [venues])
+  const validIncidents = useMemo(() => incidents.filter(hasValidLatLng), [incidents])
   const [showVenues, setShowVenues] = useState(true)
   const [showIncidents, setShowIncidents] = useState(true)
   const [showTraffic, setShowTraffic] = useState(false)
@@ -127,7 +149,7 @@ export default function LiveMap() {
   const [weatherSignals, setWeatherSignals] = useState([])
   const [weatherMode, setWeatherMode] = useState('loading')
   const [weatherStatus, setWeatherStatus] = useState('Loading live venue weather…')
-  const fallbackWeatherSignals = useMemo(() => buildFallbackWeatherSignals(venues), [venues])
+  const fallbackWeatherSignals = useMemo(() => buildFallbackWeatherSignals(validVenues), [validVenues])
 
   useEffect(() => {
     setWeatherSignals(fallbackWeatherSignals)
@@ -140,7 +162,7 @@ export default function LiveMap() {
   }, [fallbackWeatherSignals])
 
   useEffect(() => {
-    if (!AZURE_MAPS_KEY || !venues.length) return
+    if (!AZURE_MAPS_KEY || !validVenues.length) return
 
     let active = true
 
@@ -152,7 +174,7 @@ export default function LiveMap() {
       setWeatherStatus('Refreshing live venue weather from Azure Maps…')
 
       const settled = await Promise.allSettled(
-        venues.map(venue => fetchVenueWeather(venue, controller.signal))
+        validVenues.map(venue => fetchVenueWeather(venue, controller.signal))
       )
 
       if (!active || controller.signal.aborted) return
@@ -164,7 +186,7 @@ export default function LiveMap() {
       const failedCount = settled.length - live.length
 
       if (live.length) {
-        const merged = venues.map(venue => {
+        const merged = validVenues.map(venue => {
           const found = live.find(item => item.venueId === venue.id)
           return found || fallbackWeatherSignals.find(item => item.venueId === venue.id)
         })
@@ -173,7 +195,7 @@ export default function LiveMap() {
         setWeatherMode(failedCount ? 'mixed' : 'live')
         setWeatherStatus(
           failedCount
-            ? `Live weather loaded for ${live.length}/${venues.length} venues. Remaining venues use fallback conditions.`
+            ? `Live weather loaded for ${live.length}/${validVenues.length} venues. Remaining venues use fallback conditions.`
             : `Live weather loaded for all ${live.length} venues.`
         )
       } else {
@@ -195,16 +217,22 @@ export default function LiveMap() {
         weatherRefreshRef.current = null
       }
     }
-  }, [venues, fallbackWeatherSignals])
+  }, [validVenues, fallbackWeatherSignals])
 
   useEffect(() => {
     if (!AZURE_MAPS_KEY || !mapContainer.current || mapRef.current) return
 
     isDisposedRef.current = false
+    const initialCenter = hasValidLatLng(selectedVenue)
+      ? toCoordinatePair(selectedVenue)
+      : validVenues.length
+        ? toCoordinatePair(validVenues[0])
+        : [-100, 35]
+
     const map = new atlas.Map(mapContainer.current, {
       view: 'Auto',
-      center: selectedVenue ? [selectedVenue.lng, selectedVenue.lat] : [-100, 35],
-      zoom: selectedVenue ? 11 : 3,
+      center: initialCenter,
+      zoom: hasValidLatLng(selectedVenue) ? 11 : 3,
       style: 'grayscale_dark',
       authOptions: {
         authType: atlas.AuthenticationType.subscriptionKey,
@@ -281,7 +309,7 @@ export default function LiveMap() {
       clickHandlerRef.current = handleMapClick
       map.events.add('click', clickHandlerRef.current)
 
-      focusMap(map, venues, selectedVenue)
+      focusMap(map, validVenues, selectedVenue)
       setMapReady(true)
     }
 
@@ -311,14 +339,14 @@ export default function LiveMap() {
       mapRef.current = null
       map.dispose()
     }
-  }, [venues, selectedVenue])
+  }, [validVenues, selectedVenue])
 
   useEffect(() => {
     const map = mapRef.current
-    if (!mapReady || !map || !venues.length) return
+    if (!mapReady || !map || !validVenues.length) return
 
-    focusMap(map, venues, selectedVenue)
-  }, [mapReady, venues, selectedVenue])
+    focusMap(map, validVenues, selectedVenue)
+  }, [mapReady, validVenues, selectedVenue])
 
   useEffect(() => {
     const map = mapRef.current
@@ -337,8 +365,8 @@ export default function LiveMap() {
     source.clear()
 
     if (showVenues) {
-      source.add(venues.map(v => new atlas.data.Feature(
-        new atlas.data.Point([v.lng, v.lat]),
+      source.add(validVenues.map(v => new atlas.data.Feature(
+        new atlas.data.Point(toCoordinatePair(v)),
         {
           layerType: 'venue',
           title: v.name,
@@ -349,8 +377,8 @@ export default function LiveMap() {
     }
 
     if (showIncidents) {
-      source.add(incidents.map(i => new atlas.data.Feature(
-        new atlas.data.Point([i.lng, i.lat]),
+      source.add(validIncidents.map(i => new atlas.data.Feature(
+        new atlas.data.Point(toCoordinatePair(i)),
         {
           layerType: 'incident',
           color: i.severity === 'high' ? '#ef4444' : '#f59e0b',
@@ -363,7 +391,7 @@ export default function LiveMap() {
 
     if (showWeather) {
       source.add(weatherSignals.map(signal => new atlas.data.Feature(
-        new atlas.data.Point([signal.lng, signal.lat]),
+        new atlas.data.Point(toCoordinatePair(signal)),
         {
           layerType: 'weather',
           color: getWeatherColor(signal.condition),
@@ -373,7 +401,7 @@ export default function LiveMap() {
         }
       )))
     }
-  }, [mapReady, venues, incidents, showVenues, showIncidents, showWeather, weatherSignals])
+  }, [mapReady, validVenues, validIncidents, showVenues, showIncidents, showWeather, weatherSignals])
 
   const renderFallback = () => (
     <div style={{ background: '#1e293b', borderRadius: 8, padding: '1rem', border: '1px solid #334155' }}>
