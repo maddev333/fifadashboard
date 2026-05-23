@@ -16,7 +16,7 @@
     "title": "Parking lot B at capacity",
     "message": "Overflow parking redirected to Lot D.",
     "scope": "venue",
-    "venueId": "la-rose-bowl",
+    "venueId": "los-angeles-stadium",
     "recommendedAction": "Update signage."
   }
 ]

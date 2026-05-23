@@ -19,7 +19,7 @@
     "severity": "medium",
     "title": "Unauthorized drone activity",
     "description": "Drone spotted near restricted airspace. Monitoring.",
-    "venueId": "la-rose-bowl",
+    "venueId": "los-angeles-stadium",
     "lat": 34.162,
     "lng": -118.168,
     "status": "open",

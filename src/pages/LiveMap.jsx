@@ -137,7 +137,6 @@ export default function LiveMap() {
         popupRef.current.open(map)
       })
 
-      map.setCamera({ bounds: atlas.data.BoundingBox.fromData(venues.map(v => [v.lng, v.lat])), padding: 60 })
       mapRef.current = map
       setMapReady(true)
     })
@@ -147,8 +146,24 @@ export default function LiveMap() {
       mapRef.current = null
       dataSourceRef.current = null
     }
-  }, [venues])
+  }, [])
 
+  // Update camera bounds once venues are loaded
+  useEffect(() => {
+    const map = mapRef.current
+    if (!mapReady || !map || !venues.length) return
+
+    try {
+      map.setCamera({
+        bounds: atlas.data.BoundingBox.fromData(venues.map(v => [v.lng, v.lat])),
+        padding: 60
+      })
+    } catch {
+      // ignore if bounding box fails
+    }
+  }, [mapReady, venues])
+
+  // Sync data source with current toggle state
   useEffect(() => {
     const source = dataSourceRef.current
     if (!mapReady || !source) return
@@ -212,7 +227,7 @@ export default function LiveMap() {
       <h2 style={{ marginTop: 0 }}>Map Preview Unavailable</h2>
       <p style={{ color: '#cbd5e1' }}>
         Add <code>VITE_AZURE_MAPS_KEY</code> to enable the interactive Azure Maps experience.
-        Venue coverage, live-ops traffic indicators, and weather overlays are preconfigured in data.
+        Venue coverage, simulated traffic indicators, and simulated weather overlays are preconfigured in data.
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
         <div>
@@ -245,10 +260,10 @@ export default function LiveMap() {
           <input type="checkbox" checked={showIncidents} onChange={() => setShowIncidents(s => !s)} /> Incidents
         </label>
         <label style={{ color: '#cbd5e1', cursor: 'pointer' }}>
-          <input type="checkbox" checked={showTraffic} onChange={() => setShowTraffic(s => !s)} /> Live Traffic
+          <input type="checkbox" checked={showTraffic} onChange={() => setShowTraffic(s => !s)} /> Simulated Traffic
         </label>
         <label style={{ color: '#cbd5e1', cursor: 'pointer' }}>
-          <input type="checkbox" checked={showWeather} onChange={() => setShowWeather(s => !s)} /> Live Weather
+          <input type="checkbox" checked={showWeather} onChange={() => setShowWeather(s => !s)} /> Simulated Weather
         </label>
       </div>
       {!AZURE_MAPS_KEY && (

@@ -18,7 +18,7 @@
     "group": "B",
     "homeTeam": "USA",
     "awayTeam": "Wales",
-    "venueId": "la-rose-bowl",
+    "venueId": "los-angeles-stadium",
     "timeLocal": "19:00",
     "timeET": "22:00",
     "broadcaster": "FOX"
@@ -30,7 +30,7 @@
     "group": "C",
     "homeTeam": "Canada",
     "awayTeam": "Argentina",
-    "venueId": "toronto-bmo",
+    "venueId": "toronto-stadium",
     "timeLocal": "14:00",
     "timeET": "14:00",
     "broadcaster": "TSN"
