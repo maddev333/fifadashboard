@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import * as atlas from 'azure-maps-control'
 import { useData } from '../hooks/useData'
 
@@ -76,6 +77,30 @@ async function fetchVenueWeather(venue, signal) {
   }
 }
 
+function focusMap(map, venues, selectedVenue) {
+  if (!map || !venues.length) return
+
+  if (selectedVenue) {
+    map.setCamera({
+      center: [selectedVenue.lng, selectedVenue.lat],
+      zoom: 11,
+      padding: 60,
+      type: 'ease',
+      duration: 1200
+    })
+    return
+  }
+
+  try {
+    map.setCamera({
+      bounds: atlas.data.BoundingBox.fromData(venues.map(v => [v.lng, v.lat])),
+      padding: 60
+    })
+  } catch {
+    // ignore if bounding box fails
+  }
+}
+
 export default function LiveMap() {
   const mapContainer = useRef(null)
   const mapRef = useRef(null)
@@ -88,6 +113,12 @@ export default function LiveMap() {
   const weatherRefreshRef = useRef(null)
   const { data: venues } = useData('venues')
   const { data: incidents } = useData('incidents')
+  const [searchParams] = useSearchParams()
+  const selectedVenueId = searchParams.get('venue') || ''
+  const selectedVenue = useMemo(
+    () => venues.find(venue => venue.id === selectedVenueId) || null,
+    [venues, selectedVenueId]
+  )
   const [showVenues, setShowVenues] = useState(true)
   const [showIncidents, setShowIncidents] = useState(true)
   const [showTraffic, setShowTraffic] = useState(false)
@@ -172,8 +203,8 @@ export default function LiveMap() {
     isDisposedRef.current = false
     const map = new atlas.Map(mapContainer.current, {
       view: 'Auto',
-      center: [-100, 35],
-      zoom: 3,
+      center: selectedVenue ? [selectedVenue.lng, selectedVenue.lat] : [-100, 35],
+      zoom: selectedVenue ? 11 : 3,
       style: 'grayscale_dark',
       authOptions: {
         authType: atlas.AuthenticationType.subscriptionKey,
@@ -250,11 +281,7 @@ export default function LiveMap() {
       clickHandlerRef.current = handleMapClick
       map.events.add('click', clickHandlerRef.current)
 
-      const bounds = atlas.data.BoundingBox.fromData(venues.map(v => [v.lng, v.lat]))
-      if (bounds) {
-        map.setCamera({ bounds, padding: 60 })
-      }
-
+      focusMap(map, venues, selectedVenue)
       setMapReady(true)
     }
 
@@ -284,21 +311,14 @@ export default function LiveMap() {
       mapRef.current = null
       map.dispose()
     }
-  }, [venues])
+  }, [venues, selectedVenue])
 
   useEffect(() => {
     const map = mapRef.current
     if (!mapReady || !map || !venues.length) return
 
-    try {
-      map.setCamera({
-        bounds: atlas.data.BoundingBox.fromData(venues.map(v => [v.lng, v.lat])),
-        padding: 60
-      })
-    } catch {
-      // ignore if bounding box fails
-    }
-  }, [mapReady, venues])
+    focusMap(map, venues, selectedVenue)
+  }, [mapReady, venues, selectedVenue])
 
   useEffect(() => {
     const map = mapRef.current
@@ -362,6 +382,11 @@ export default function LiveMap() {
         Add <code>VITE_AZURE_MAPS_KEY</code> to enable the interactive Azure Maps experience.
         Venue coverage and incident overlays are preconfigured in data, and venue weather falls back to static simulation.
       </p>
+      {selectedVenue && (
+        <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: '#0f172a', borderRadius: 6, color: '#bae6fd' }}>
+          Focused venue: <strong>{selectedVenue.name}</strong> ({selectedVenue.city}, {selectedVenue.country})
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
         <div>
           <h3>Venues ({venues.length})</h3>
@@ -384,7 +409,22 @@ export default function LiveMap() {
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-      <h1 style={{ marginBottom: '0.5rem' }}>Live Map</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ marginBottom: '0.5rem' }}>Live Map</h1>
+          {selectedVenue && (
+            <p style={{ marginTop: 0, color: '#94a3b8' }}>
+              Focused on <strong style={{ color: '#e2e8f0' }}>{selectedVenue.name}</strong> in {selectedVenue.city}, {selectedVenue.country}.
+              {' '}<Link to="/map" style={{ color: '#38bdf8' }}>Show all venues</Link>
+            </p>
+          )}
+          {!selectedVenue && selectedVenueId && (
+            <p style={{ marginTop: 0, color: '#fda4af' }}>
+              Venue <strong>{selectedVenueId}</strong> was not found. Showing all venues instead.
+            </p>
+          )}
+        </div>
+      </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.5rem', alignItems: 'center' }}>
         <label style={{ color: '#cbd5e1', cursor: 'pointer' }}>
           <input type="checkbox" checked={showVenues} onChange={() => setShowVenues(s => !s)} /> Venues
