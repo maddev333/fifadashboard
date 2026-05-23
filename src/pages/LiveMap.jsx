@@ -6,6 +6,8 @@ import { hasValidLatLng, useVenueWeather } from '../hooks/useVenueWeather'
 
 const AZURE_MAPS_KEY = import.meta.env.VITE_AZURE_MAPS_KEY
 const FOCUSED_VENUE_ZOOM = 11
+const DEFAULT_ALL_VENUES_CENTER = [-98.5795, 39.8283]
+const DEFAULT_ALL_VENUES_ZOOM = 4
 const FOCUSED_WEATHER_RADIUS_METERS = 25000
 const WEATHER_OVERLAY_ID = 'weather-radar-overlay'
 
@@ -71,7 +73,12 @@ function focusMap(map, venues, selectedVenue) {
       padding: 60
     })
   } catch {
-    // ignore if bounding box fails
+    map.setCamera({
+      center: DEFAULT_ALL_VENUES_CENTER,
+      zoom: DEFAULT_ALL_VENUES_ZOOM,
+      type: 'ease',
+      duration: 1200
+    })
   }
 }
 
@@ -145,14 +152,12 @@ export default function LiveMap() {
     isDisposedRef.current = false
     const initialCenter = hasValidLatLng(selectedVenue)
       ? toCoordinatePair(selectedVenue)
-      : validVenues.length
-        ? toCoordinatePair(validVenues[0])
-        : [-100, 35]
+      : DEFAULT_ALL_VENUES_CENTER
 
     const map = new atlas.Map(mapContainer.current, {
       view: 'Auto',
       center: initialCenter,
-      zoom: hasValidLatLng(selectedVenue) ? FOCUSED_VENUE_ZOOM : 3,
+      zoom: hasValidLatLng(selectedVenue) ? FOCUSED_VENUE_ZOOM : DEFAULT_ALL_VENUES_ZOOM,
       style: 'grayscale_dark',
       authOptions: {
         authType: atlas.AuthenticationType.subscriptionKey,
