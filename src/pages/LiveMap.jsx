@@ -48,6 +48,9 @@ export default function LiveMap() {
   const mapRef = useRef(null)
   const popupRef = useRef(null)
   const dataSourceRef = useRef(null)
+  const readyHandlerRef = useRef(null)
+  const clickHandlerRef = useRef(null)
+  const isDisposedRef = useRef(false)
   const { data: venues } = useData('venues')
   const { data: incidents } = useData('incidents')
   const [showVenues, setShowVenues] = useState(true)
@@ -60,8 +63,9 @@ export default function LiveMap() {
   const weatherSignals = useMemo(() => buildWeatherSignals(venues), [venues])
 
   useEffect(() => {
-    if (!AZURE_MAPS_KEY || !mapContainer.current || mapRef.current) return
+    if (!AZURE_MAPS_KEY || !mapContainer.current || mapRef.current || venues.length === 0) return
 
+    isDisposedRef.current = false
     const map = new atlas.Map(mapContainer.current, {
       view: 'Auto',
       center: [-100, 35],
@@ -73,7 +77,35 @@ export default function LiveMap() {
       }
     })
 
-    map.events.add('ready', () => {
+    mapRef.current = map
+
+    const handleMapClick = event => {
+      if (isDisposedRef.current || !popupRef.current) return
+
+      const shapes = map.layers.getRenderedShapes(event.position)
+      if (!shapes.length) return
+
+      const shape = shapes[0]
+      const properties = shape.getProperties?.() || {}
+      const geometryType = shape.getType?.()
+      const coordinates = geometryType === 'Point'
+        ? shape.getCoordinates()
+        : map.pixelToPosition(event.position)
+
+      popupRef.current.setOptions({
+        content: `<div style="padding:10px;font-family:sans-serif;min-width:220px">
+          <strong>${properties.title || 'Map item'}</strong><br/>
+          <span>${properties.subtitle || ''}</span><br/>
+          <span style="color:#475569">${properties.detail || ''}</span>
+        </div>`,
+        position: coordinates
+      })
+      popupRef.current.open(map)
+    }
+
+    const handleReady = () => {
+      if (isDisposedRef.current) return
+
       popupRef.current = new atlas.Popup({ pixelOffset: [0, -18] })
       const source = new atlas.source.DataSource()
       map.sources.add(source)
@@ -117,34 +149,42 @@ export default function LiveMap() {
         filter: ['==', ['get', 'layerType'], 'weather']
       }))
 
-      map.events.add('click', event => {
-        const shapes = map.layers.getRenderedShapes(event.position)
-        if (!shapes.length) return
-        const shape = shapes[0]
-        const properties = shape.getProperties?.() || {}
-        const coordinates = shape.getType?.() === 'Point'
-          ? shape.getCoordinates()
-          : event.position
+      clickHandlerRef.current = handleMapClick
+      map.events.add('click', clickHandlerRef.current)
 
-        popupRef.current.setOptions({
-          content: `<div style="padding:10px;font-family:sans-serif;min-width:220px">
-            <strong>${properties.title || 'Map item'}</strong><br/>
-            <span>${properties.subtitle || ''}</span><br/>
-            <span style="color:#475569">${properties.detail || ''}</span>
-          </div>`,
-          position: Array.isArray(coordinates) ? coordinates : map.pixelToPosition(event.position)
-        })
-        popupRef.current.open(map)
-      })
+      const bounds = atlas.data.BoundingBox.fromData(venues.map(v => [v.lng, v.lat]))
+      if (bounds) {
+        map.setCamera({ bounds, padding: 60 })
+      }
 
-      mapRef.current = map
       setMapReady(true)
-    })
+    }
+
+    readyHandlerRef.current = handleReady
+    map.events.add('ready', readyHandlerRef.current)
 
     return () => {
-      map.dispose()
-      mapRef.current = null
+      isDisposedRef.current = true
+      setMapReady(false)
+
+      if (popupRef.current) {
+        popupRef.current.close()
+        popupRef.current = null
+      }
+
+      if (readyHandlerRef.current) {
+        map.events.remove('ready', readyHandlerRef.current)
+        readyHandlerRef.current = null
+      }
+
+      if (clickHandlerRef.current) {
+        map.events.remove('click', clickHandlerRef.current)
+        clickHandlerRef.current = null
+      }
+
       dataSourceRef.current = null
+      mapRef.current = null
+      map.dispose()
     }
   }, [])
 
