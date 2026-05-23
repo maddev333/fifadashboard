@@ -27,6 +27,9 @@ Since GitHub Pages is purely static, the Azure Maps subscription key is exposed 
 - The phased build plan (this scaffold covers Phase 1 plus a lightweight demo admin flow)
 - Dark command-center aesthetic
 
+### Live traffic and weather note
+This repository now includes venue-wide traffic and weather overlay scaffolding on the Live Map page. In the current GitHub Pages static deployment, those overlays are simulated from venue data because there is no secure backend proxy for Azure Maps Traffic/Weather REST calls. For true real-time traffic flow tiles and weather services, move the app to Azure Static Web Apps + Azure Functions (or another secured backend) and proxy the Azure Maps APIs server-side.
+
 ---
 
 ## Project Structure
@@ -150,6 +153,8 @@ The `base` path in Vite doesn't match the GitHub Pages URL. Example:
 
 All operational data lives in `/public/data/*.json`. Edit these files and push — they will deploy with the next build.
 
+The `venues.json` file now includes the full FIFA 2026 host venue set used by the Live Map page.
+
 If you want to move to a real backend later, replace the `useData` and `useAlerts` hooks with authenticated API calls.
 
 ---
@@ -175,6 +180,13 @@ If you want to move to a real backend later, replace the `useData` and `useAlert
 If the key is missing, the Live Map page now falls back to an operations summary instead of leaving a blank map container.
 
 > **Note:** Because the workflow already declares `environment: github-pages`, `${{ secrets.VITE_AZURE_MAPS_KEY }}` will automatically prefer the environment secret. If no environment secret exists, it falls back to a repository secret with the same name.
+
+### Enabling true live Azure Maps traffic and weather
+For a production-grade live traffic flow layer and real weather data:
+1. Move the app behind a secure backend (Azure Static Web Apps + Azure Functions recommended).
+2. Proxy Azure Maps Traffic Flow, Weather Current Conditions, and/or Weather Along Route endpoints through the backend.
+3. Keep the subscription key out of the browser bundle.
+4. Refresh venue overlays on an interval (e.g. every 5 minutes for weather, every 60 seconds for traffic).
 
 ---
 
