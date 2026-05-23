@@ -57,6 +57,10 @@ export default function Dashboard() {
   const openIncidents = incidents.filter(i => i.status === 'open').length
   const openShifts = staffing.filter(s => s.status === 'open').length
   const weatherWarnings = alerts.filter(a => a.severity === 'critical').length
+  const getVenueLink = (venueId) => ({
+    pathname: '/map',
+    search: `?venue=${encodeURIComponent(venueId)}`,
+  })
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto' }}>
@@ -85,7 +89,7 @@ export default function Dashboard() {
               <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
                 {m.timeLocal} @{' '}
                 <Link
-                  to={`/map?venue=${encodeURIComponent(m.venueId)}`}
+                  to={getVenueLink(m.venueId)}
                   style={{ color: '#38bdf8', textDecoration: 'none', fontWeight: 600 }}
                 >
                   {venues.find(v => v.id === m.venueId)?.name || m.venueId}
@@ -134,7 +138,7 @@ export default function Dashboard() {
               <tr key={v.id} style={{ borderTop: '1px solid #334155' }}>
                 <td style={{ padding: '0.5rem 0' }}>
                   <Link
-                    to={`/map?venue=${encodeURIComponent(v.id)}`}
+                    to={getVenueLink(v.id)}
                     style={{ color: '#38bdf8', textDecoration: 'none', fontWeight: 600 }}
                   >
                     {v.name}
