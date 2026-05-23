@@ -186,7 +186,7 @@ export default function LiveMap() {
       mapRef.current = null
       map.dispose()
     }
-  }, [])
+  }, [venues])
 
   // Update camera bounds once venues are loaded
   useEffect(() => {
