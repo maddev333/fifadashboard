@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react'
-import { useData } from '../hooks/useData'
+import { useAlerts, readCustomAlerts } from '../hooks/useAlerts'
+
+const STORAGE_KEY = 'custom_alerts'
 
 export default function Admin() {
-  const { data: alerts } = useData('alerts')
+  const { alerts } = useAlerts()
   const [isAdmin, setIsAdmin] = useState(false)
   const [storedAlerts, setStoredAlerts] = useState([])
   const [form, setForm] = useState({ title: '', message: '', severity: 'medium', scope: 'venue', venueId: '' })
 
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem('custom_alerts') || '[]')
-    setStoredAlerts(saved)
+    setStoredAlerts(readCustomAlerts())
   }, [])
 
   const handleAdd = (e) => {
@@ -20,7 +21,7 @@ export default function Admin() {
       ...form
     }
     const updated = [newAlert, ...storedAlerts]
-    localStorage.setItem('custom_alerts', JSON.stringify(updated))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
     setStoredAlerts(updated)
     setForm({ title: '', message: '', severity: 'medium', scope: 'venue', venueId: '' })
   }
@@ -82,6 +83,16 @@ export default function Admin() {
           <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{a.message}</div>
         </div>
       ))}
+
+      <div style={{ marginTop: '1.5rem' }}>
+        <h3>All Alerts in Current Session View ({alerts.length})</h3>
+        {alerts.slice(0, 8).map(a => (
+          <div key={a.id} style={{ background: '#1e293b', borderRadius: 6, padding: '0.75rem', marginBottom: '0.5rem', border: '1px solid #334155' }}>
+            <strong style={{ color: a.severity === 'critical' ? '#ef4444' : '#e2e8f0' }}>{a.title}</strong>
+            <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{a.message}</div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
