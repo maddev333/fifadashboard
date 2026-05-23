@@ -28,7 +28,7 @@ Since GitHub Pages is purely static, the Azure Maps subscription key is exposed 
 - Dark command-center aesthetic
 
 ### Live traffic and weather note
-This repository now includes venue-wide traffic and weather overlay scaffolding on the Live Map page. In the current GitHub Pages static deployment, those overlays are simulated from venue data because there is no secure backend proxy for Azure Maps Traffic/Weather REST calls. For true real-time traffic flow tiles and weather services, move the app to Azure Static Web Apps + Azure Functions (or another secured backend) and proxy the Azure Maps APIs server-side.
+This repository now uses the Azure Maps Web SDK traffic flow visualization directly on the Live Map page when a valid Azure Maps key is configured. Weather overlays remain simulated from venue data in the current GitHub Pages static deployment because there is no secure backend proxy for Azure Maps Weather REST calls.
 
 ---
 
@@ -183,10 +183,10 @@ If the key is missing, the Live Map page now falls back to an operations summary
 
 ### Enabling true live Azure Maps traffic and weather
 For a production-grade live traffic flow layer and real weather data:
-1. Move the app behind a secure backend (Azure Static Web Apps + Azure Functions recommended).
-2. Proxy Azure Maps Traffic Flow, Weather Current Conditions, and/or Weather Along Route endpoints through the backend.
-3. Keep the subscription key out of the browser bundle.
-4. Refresh venue overlays on an interval (e.g. every 5 minutes for weather, every 60 seconds for traffic).
+1. Use the Azure Maps Web SDK traffic visualization with a valid Azure Maps key for client-side live traffic rendering.
+2. Move weather and any advanced REST-backed overlays behind a secure backend (Azure Static Web Apps + Azure Functions recommended).
+3. Keep REST subscription keys and signed requests out of the browser bundle.
+4. Refresh backend-driven overlays on an interval (e.g. every 5 minutes for weather, every 60 seconds for traffic-dependent analytics).
 
 ---
 

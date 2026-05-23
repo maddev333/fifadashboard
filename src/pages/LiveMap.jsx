@@ -4,14 +4,6 @@ import { useData } from '../hooks/useData'
 
 const AZURE_MAPS_KEY = import.meta.env.VITE_AZURE_MAPS_KEY
 
-function getTrafficColor(level) {
-  switch (level) {
-    case 'heavy': return '#ef4444'
-    case 'moderate': return '#f59e0b'
-    default: return '#22c55e'
-  }
-}
-
 function getWeatherColor(condition) {
   switch (condition) {
     case 'Storm': return '#8b5cf6'
@@ -19,18 +11,6 @@ function getWeatherColor(condition) {
     case 'Clouds': return '#94a3b8'
     default: return '#facc15'
   }
-}
-
-function buildTrafficSegments(venues) {
-  return venues.map((venue, index) => ({
-    ...venue,
-    level: index % 5 === 0 ? 'heavy' : index % 3 === 0 ? 'moderate' : 'light',
-    path: [
-      [venue.lng - 0.2, venue.lat - 0.08],
-      [venue.lng, venue.lat],
-      [venue.lng + 0.2, venue.lat + 0.08]
-    ]
-  }))
 }
 
 function buildWeatherSignals(venues) {
@@ -58,8 +38,6 @@ export default function LiveMap() {
   const [showTraffic, setShowTraffic] = useState(true)
   const [showWeather, setShowWeather] = useState(true)
   const [mapReady, setMapReady] = useState(false)
-
-  const trafficSegments = useMemo(() => buildTrafficSegments(venues), [venues])
   const weatherSignals = useMemo(() => buildWeatherSignals(venues), [venues])
 
   useEffect(() => {
@@ -111,12 +89,6 @@ export default function LiveMap() {
       map.sources.add(source)
       dataSourceRef.current = source
 
-      map.layers.add(new atlas.layer.LineLayer(source, 'traffic-lines', {
-        strokeColor: ['get', 'color'],
-        strokeWidth: 6,
-        filter: ['==', ['get', 'layerType'], 'traffic']
-      }))
-
       map.layers.add(new atlas.layer.SymbolLayer(source, 'venue-points', {
         iconOptions: {
           image: 'pin-round-darkblue',
@@ -148,6 +120,11 @@ export default function LiveMap() {
         strokeWidth: 2,
         filter: ['==', ['get', 'layerType'], 'weather']
       }))
+
+      map.setTraffic({
+        flow: showTraffic,
+        incidents: false
+      })
 
       clickHandlerRef.current = handleMapClick
       map.events.add('click', clickHandlerRef.current)
@@ -186,9 +163,8 @@ export default function LiveMap() {
       mapRef.current = null
       map.dispose()
     }
-  }, [venues])
+  }, [venues, showTraffic])
 
-  // Update camera bounds once venues are loaded
   useEffect(() => {
     const map = mapRef.current
     if (!mapReady || !map || !venues.length) return
@@ -203,7 +179,16 @@ export default function LiveMap() {
     }
   }, [mapReady, venues])
 
-  // Sync data source with current toggle state
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+
+    map.setTraffic({
+      flow: showTraffic,
+      incidents: false
+    })
+  }, [mapReady, showTraffic])
+
   useEffect(() => {
     const source = dataSourceRef.current
     if (!mapReady || !source) return
@@ -235,19 +220,6 @@ export default function LiveMap() {
       )))
     }
 
-    if (showTraffic) {
-      source.add(trafficSegments.map(segment => new atlas.data.Feature(
-        new atlas.data.LineString(segment.path),
-        {
-          layerType: 'traffic',
-          color: getTrafficColor(segment.level),
-          title: `${segment.name} traffic`,
-          subtitle: `${segment.city} ingress/egress`,
-          detail: `Traffic load: ${segment.level}`
-        }
-      )))
-    }
-
     if (showWeather) {
       source.add(weatherSignals.map(signal => new atlas.data.Feature(
         new atlas.data.Point([signal.lng, signal.lat]),
@@ -256,18 +228,18 @@ export default function LiveMap() {
           color: getWeatherColor(signal.condition),
           title: `${signal.name} weather`,
           subtitle: `${signal.condition} • ${signal.temperatureF}°F`,
-          detail: `Wind ${signal.windMph} mph`
+          detail: `Wind ${signal.windMph} mph (simulated)`
         }
       )))
     }
-  }, [mapReady, venues, incidents, showVenues, showIncidents, showTraffic, showWeather, trafficSegments, weatherSignals])
+  }, [mapReady, venues, incidents, showVenues, showIncidents, showWeather, weatherSignals])
 
   const renderFallback = () => (
     <div style={{ background: '#1e293b', borderRadius: 8, padding: '1rem', border: '1px solid #334155' }}>
       <h2 style={{ marginTop: 0 }}>Map Preview Unavailable</h2>
       <p style={{ color: '#cbd5e1' }}>
         Add <code>VITE_AZURE_MAPS_KEY</code> to enable the interactive Azure Maps experience.
-        Venue coverage, simulated traffic indicators, and simulated weather overlays are preconfigured in data.
+        Venue coverage and incident overlays are preconfigured in data, and weather markers remain simulated.
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
         <div>
@@ -281,7 +253,7 @@ export default function LiveMap() {
         </div>
         <div>
           <h3>Operational overlays</h3>
-          <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Traffic segments modeled for all venues: {trafficSegments.length}</div>
+          <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Live Azure Maps traffic flow available when map is enabled</div>
           <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Weather markers modeled for all venues: {weatherSignals.length}</div>
           <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Open incidents: {incidents.filter(i => i.status === 'open').length}</div>
         </div>
@@ -300,7 +272,7 @@ export default function LiveMap() {
           <input type="checkbox" checked={showIncidents} onChange={() => setShowIncidents(s => !s)} /> Incidents
         </label>
         <label style={{ color: '#cbd5e1', cursor: 'pointer' }}>
-          <input type="checkbox" checked={showTraffic} onChange={() => setShowTraffic(s => !s)} /> Simulated Traffic
+          <input type="checkbox" checked={showTraffic} onChange={() => setShowTraffic(s => !s)} /> Live Traffic
         </label>
         <label style={{ color: '#cbd5e1', cursor: 'pointer' }}>
           <input type="checkbox" checked={showWeather} onChange={() => setShowWeather(s => !s)} /> Simulated Weather
