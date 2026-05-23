@@ -1,4 +1,6 @@
+import { useMemo } from 'react'
 import { useData } from '../hooks/useData'
+import { useAlerts } from '../hooks/useAlerts'
 
 function KpiCard({ title, value, color = '#0ea5e9' }) {
   return (
@@ -38,10 +40,18 @@ export default function Dashboard() {
   const { data: matches } = useData('matches')
   const { data: incidents } = useData('incidents')
   const { data: staffing } = useData('staffing')
-  const { data: alerts } = useData('alerts')
+  const { alerts } = useAlerts()
 
-  const today = '2026-06-11'
-  const todayMatches = matches.filter(m => m.date === today)
+  const selectedDate = useMemo(() => {
+    const dates = matches
+      .map(match => match.date)
+      .filter(Boolean)
+      .sort()
+
+    return dates[0] || ''
+  }, [matches])
+
+  const todayMatches = selectedDate ? matches.filter(m => m.date === selectedDate) : []
   const activeVenues = [...new Set(todayMatches.map(m => m.venueId))].length
   const openIncidents = incidents.filter(i => i.status === 'open').length
   const openShifts = staffing.filter(s => s.status === 'open').length
@@ -49,21 +59,24 @@ export default function Dashboard() {
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-      <h1 style={{ marginBottom: '1rem' }}>Operations Dashboard</h1>
+      <h1 style={{ marginBottom: '0.25rem' }}>Operations Dashboard</h1>
+      <p style={{ marginTop: 0, marginBottom: '1rem', color: '#94a3b8' }}>
+        {selectedDate ? `Default operating date: ${selectedDate}` : 'No match schedule loaded.'}
+      </p>
 
       <AlertBanner alerts={alerts} />
 
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
-        <KpiCard title="Matches Today" value={todayMatches.length} color="#38bdf8" />
+        <KpiCard title="Matches On Selected Date" value={todayMatches.length} color="#38bdf8" />
         <KpiCard title="Active Venues" value={activeVenues} color="#22c55e" />
         <KpiCard title="Open Incidents" value={openIncidents} color="#ef4444" />
-        <KpiCard title="Weather Warnings" value={weatherWarnings} color="#f59e0b" />
+        <KpiCard title="Critical Alerts" value={weatherWarnings} color="#f59e0b" />
         <KpiCard title="Open Shifts" value={openShifts} color="#a855f7" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
         <div style={{ background: '#1e293b', borderRadius: 8, padding: '1rem', border: '1px solid #334155' }}>
-          <h3 style={{ marginTop: 0, fontSize: '0.9rem', color: '#94a3b8', textTransform: 'uppercase' }}>Today's Schedule</h3>
+          <h3 style={{ marginTop: 0, fontSize: '0.9rem', color: '#94a3b8', textTransform: 'uppercase' }}>Schedule Snapshot</h3>
           {todayMatches.length === 0 && <p style={{ color: '#cbd5e1' }}>No matches scheduled.</p>}
           {todayMatches.map(m => (
             <div key={m.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid #334155', color: '#e2e8f0' }}>

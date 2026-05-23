@@ -17,7 +17,7 @@ export default function LiveMap() {
   const [mapReady, setMapReady] = useState(false)
 
   useEffect(() => {
-    if (!mapContainer.current || mapRef.current) return
+    if (!AZURE_MAPS_KEY || !mapContainer.current || mapRef.current) return
 
     const map = new atlas.Map(mapContainer.current, {
       view: 'Auto',
@@ -46,7 +46,6 @@ export default function LiveMap() {
     const map = mapRef.current
     if (!mapReady || !map) return
 
-    // Clear existing venue markers
     venueMarkersRef.current.forEach(m => map.markers.remove(m))
     venueMarkersRef.current = []
 
@@ -83,7 +82,6 @@ export default function LiveMap() {
     const map = mapRef.current
     if (!mapReady || !map) return
 
-    // Clear existing incident markers
     incidentMarkersRef.current.forEach(m => map.markers.remove(m))
     incidentMarkersRef.current = []
 
@@ -117,6 +115,36 @@ export default function LiveMap() {
     }
   }, [mapReady, incidents, showIncidents])
 
+  const renderFallback = () => (
+    <div style={{ background: '#1e293b', borderRadius: 8, padding: '1rem', border: '1px solid #334155' }}>
+      <h2 style={{ marginTop: 0 }}>Map Preview Unavailable</h2>
+      <p style={{ color: '#cbd5e1' }}>
+        Add <code>VITE_AZURE_MAPS_KEY</code> to enable the interactive Azure Maps experience.
+        Until then, this page still provides an operations summary of venues and incidents.
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div>
+          <h3>Venues ({venues.length})</h3>
+          {venues.map(v => (
+            <div key={v.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid #334155', color: '#e2e8f0' }}>
+              <strong>{v.name}</strong>
+              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{v.city}, {v.country}</div>
+            </div>
+          ))}
+        </div>
+        <div>
+          <h3>Open Incidents ({incidents.filter(i => i.status === 'open').length})</h3>
+          {incidents.map(i => (
+            <div key={i.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid #334155', color: '#e2e8f0' }}>
+              <strong>{i.title}</strong>
+              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{i.severity} • {i.source}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto' }}>
       <h1 style={{ marginBottom: '0.5rem' }}>Live Map</h1>
@@ -134,13 +162,15 @@ export default function LiveMap() {
           color: '#fed7aa',
           padding: '0.75rem 1rem',
           borderRadius: 6,
-          marginBottom: '0.5rem',
+          marginBottom: '0.75rem',
           fontWeight: 600
         }}>
-          ⚠️ Missing VITE_AZURE_MAPS_KEY. Map will not render. See README for setup.
+          ⚠️ Missing VITE_AZURE_MAPS_KEY. Showing a non-map operational fallback instead.
         </div>
       )}
-      <div ref={mapContainer} style={{ width: '100%', height: 500, borderRadius: 8, border: '1px solid #334155' }} />
+      {AZURE_MAPS_KEY ? (
+        <div ref={mapContainer} style={{ width: '100%', height: 500, borderRadius: 8, border: '1px solid #334155' }} />
+      ) : renderFallback()}
     </div>
   )
 }
