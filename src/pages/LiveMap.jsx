@@ -63,7 +63,7 @@ export default function LiveMap() {
   const weatherSignals = useMemo(() => buildWeatherSignals(venues), [venues])
 
   useEffect(() => {
-    if (!AZURE_MAPS_KEY || !mapContainer.current || mapRef.current || venues.length === 0) return
+    if (!AZURE_MAPS_KEY || !mapContainer.current || mapRef.current) return
 
     isDisposedRef.current = false
     const map = new atlas.Map(mapContainer.current, {
