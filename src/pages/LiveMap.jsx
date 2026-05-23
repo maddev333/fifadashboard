@@ -148,8 +148,14 @@ function focusMap(map, venues, selectedVenue) {
   }
 }
 
-function buildWeatherTileUrl() {
-  return `https://atlas.microsoft.com/map/tile?api-version=2.1&tilesetId=microsoft.weather.radar.main&zoom={z}&x={x}&y={y}&tileSize=256&language=en-US&timeStamp=now&subscription-key=${AZURE_MAPS_KEY}`
+function getWeatherTileTimestamp(date = new Date()) {
+  const rounded = new Date(date)
+  rounded.setUTCMinutes(0, 0, 0)
+  return rounded.toISOString()
+}
+
+function buildWeatherTileUrl(timeStamp = getWeatherTileTimestamp()) {
+  return `https://atlas.microsoft.com/map/tile?api-version=2.1&tilesetId=microsoft.weather.radar.main&zoom={z}&x={x}&y={y}&tileSize=256&language=en-US&timeStamp=${encodeURIComponent(timeStamp)}&subscription-key=${AZURE_MAPS_KEY}`
 }
 
 function syncWeatherOverlay(map, enabled) {
