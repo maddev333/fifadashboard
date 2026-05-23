@@ -7,7 +7,7 @@ const AZURE_MAPS_KEY = import.meta.env.VITE_AZURE_MAPS_KEY
 const WEATHER_REFRESH_MS = 10 * 60 * 1000
 
 function isFiniteCoordinate(value) {
-  return Number.isFinite(Number(value))
+  return value != null && value !== '' && Number.isFinite(Number(value))
 }
 
 function hasValidLatLng(item) {
@@ -103,7 +103,6 @@ function focusMap(map, venues, selectedVenue) {
     map.setCamera({
       center: toCoordinatePair(validSelectedVenue),
       zoom: 11,
-      padding: 60,
       type: 'ease',
       duration: 1200
     })
