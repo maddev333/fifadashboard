@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useData } from '../hooks/useData'
 import { useAlerts } from '../hooks/useAlerts'
@@ -11,6 +11,43 @@ import DetailDrawer from '../components/DetailDrawer'
 
 function compareMatchDates(a, b) {
   return new Date(a.date) - new Date(b.date)
+}
+
+function getMatchDateTime(match) {
+  if (!match?.date) return null
+  const rawTime = (match.timeLocal || '00:00').trim()
+  const normalizedTime = /^\d{1,2}:\d{2}$/.test(rawTime) ? `${rawTime}:00` : rawTime
+  const parsed = new Date(`${match.date}T${normalizedTime}`)
+  return Number.isNaN(parsed.getTime()) ? new Date(`${match.date}T00:00:00`) : parsed
+}
+
+function getTimeRemainingParts(targetDate, now = new Date()) {
+  if (!(targetDate instanceof Date) || Number.isNaN(targetDate.getTime())) return null
+  const diffMs = targetDate.getTime() - now.getTime()
+  if (diffMs <= 0) {
+    return { totalMs: 0, days: 0, hours: 0, minutes: 0, seconds: 0 }
+  }
+
+  const totalSeconds = Math.floor(diffMs / 1000)
+  const days = Math.floor(totalSeconds / 86400)
+  const hours = Math.floor((totalSeconds % 86400) / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+
+  return { totalMs: diffMs, days, hours, minutes, seconds }
+}
+
+function formatCountdown(parts) {
+  if (!parts) return 'Schedule unavailable'
+  if (parts.totalMs <= 0) return 'Now live'
+
+  const segments = []
+  if (parts.days > 0) segments.push(`${parts.days}d`)
+  segments.push(`${String(parts.hours).padStart(2, '0')}h`)
+  segments.push(`${String(parts.minutes).padStart(2, '0')}m`)
+  segments.push(`${String(parts.seconds).padStart(2, '0')}s`)
+
+  return segments.join(' ')
 }
 
 export default function MapPage() {
@@ -27,6 +64,12 @@ export default function MapPage() {
     weatherRadar: true,
     weatherMarkers: true,
   })
+  const [countdownNow, setCountdownNow] = useState(() => new Date())
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCountdownNow(new Date()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   const validVenues = useMemo(() => venues.filter(hasValidLatLng), [venues])
   const validIncidents = useMemo(() => incidents.filter(hasValidLatLng), [incidents])
@@ -41,25 +84,37 @@ export default function MapPage() {
   const fifaVenues = useMemo(() => (
     validVenues.map(venue => {
       const venueMatches = matchesByVenue[venue.id] || []
-      const nextMatch = venueMatches.find(match => new Date(match.date) >= new Date(new Date().toISOString().split('T')[0])) || venueMatches[0] || null
+      const nextMatch = venueMatches.find(match => {
+        const matchDateTime = getMatchDateTime(match)
+        return matchDateTime && matchDateTime >= countdownNow
+      }) || venueMatches[0] || null
+      const nextMatchDateTime = getMatchDateTime(nextMatch)
+      const countdownParts = getTimeRemainingParts(nextMatchDateTime, countdownNow)
+      const countdownLabel = nextMatch
+        ? formatCountdown(countdownParts)
+        : 'No upcoming match'
+
       return {
         ...venue,
         matches: venueMatches,
         matchCount: venueMatches.length,
         hasMatch: venueMatches.length > 0,
         nextMatch,
+        nextMatchDateTime,
+        nextMatchCountdown: countdownLabel,
+        nextMatchCountdownParts: countdownParts,
         hostLabel: `${venue.city}, ${venue.country}`,
         venueLabel: venueMatches.length > 0
           ? `${venueMatches.length} FIFA matches`
           : 'FIFA venue'
       }
     })
-  ), [validVenues, matchesByVenue])
+  ), [validVenues, matchesByVenue, countdownNow])
 
   const featuredVenue = useMemo(() => {
     return fifaVenues
-      .filter(venue => venue.nextMatch)
-      .sort((a, b) => compareMatchDates(a.nextMatch, b.nextMatch))[0] || fifaVenues[0] || null
+      .filter(venue => venue.nextMatchDateTime)
+      .sort((a, b) => a.nextMatchDateTime - b.nextMatchDateTime)[0] || fifaVenues[0] || null
   }, [fifaVenues])
 
   const [selectedVenueId, setSelectedVenueId] = useState(null)
@@ -96,6 +151,7 @@ export default function MapPage() {
           selectedVenueId={selectedVenueId}
           featuredVenueId={featuredVenue?.id || null}
           todayMatches={todayMatches}
+          nextMatchCountdown={featuredVenue?.nextMatchCountdown || null}
           onVenueClick={handleVenueClick}
           onBackgroundClick={handleBackgroundClick}
         />
@@ -118,7 +174,7 @@ export default function MapPage() {
           <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>⚽ FIFA World Cup 2026 Venue Map</div>
           <div style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>
             {featuredVenue?.nextMatch
-              ? `Next venue in focus: ${featuredVenue.name} • ${featuredVenue.nextMatch.homeTeam} vs ${featuredVenue.nextMatch.awayTeam} on ${featuredVenue.nextMatch.date}`
+              ? `Next venue in focus: ${featuredVenue.name} • ${featuredVenue.nextMatch.homeTeam} vs ${featuredVenue.nextMatch.awayTeam} on ${featuredVenue.nextMatch.date} • Starts in ${featuredVenue.nextMatchCountdown}`
               : 'Viewing tournament host venues across the United States, Mexico, and Canada'}
           </div>
         </div>
@@ -132,6 +188,7 @@ export default function MapPage() {
 
       <KpiOverlay stats={[
         { label: 'Tournament Matches', value: totalHostedMatches, color: '#38bdf8' },
+        { label: 'Next Match Countdown', value: featuredVenue?.nextMatchCountdown || 'N/A', color: '#fb923c' },
         { label: 'Matches Today', value: todayMatches.length, color: '#22c55e' },
         { label: 'Host Venues', value: fifaVenues.length, color: '#facc15' },
         { label: 'Open Incidents', value: openIncidents, color: '#ef4444' },
@@ -150,7 +207,7 @@ export default function MapPage() {
       <DetailDrawer
         tab={drawerTab}
         onTabChange={setDrawerTab}
-        venues={venues}
+        venues={fifaVenues}
         incidents={incidents}
         matches={matches}
         staffing={staffing}
