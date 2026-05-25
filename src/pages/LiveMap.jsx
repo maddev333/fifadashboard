@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
 import * as atlas from 'azure-maps-control'
-import { useData } from '../hooks/useData'
-import { hasValidLatLng, useVenueWeather } from '../hooks/useVenueWeather'
+import { hasValidLatLng, toCoordinatePair, getDistanceInMeters } from '../utils/geo'
 
 const AZURE_MAPS_KEY = import.meta.env.VITE_AZURE_MAPS_KEY
 const FOCUSED_VENUE_ZOOM = 11
@@ -10,10 +8,6 @@ const DEFAULT_ALL_VENUES_CENTER = [-98.5795, 39.8283]
 const DEFAULT_ALL_VENUES_ZOOM = 4
 const FOCUSED_WEATHER_RADIUS_METERS = 25000
 const WEATHER_OVERLAY_ID = 'weather-radar-overlay'
-
-function toCoordinatePair(item) {
-  return [Number(item.lng), Number(item.lat)]
-}
 
 function getWeatherColor(condition) {
   switch (condition) {
@@ -25,25 +19,8 @@ function getWeatherColor(condition) {
   }
 }
 
-function getDistanceInMeters(a, b) {
-  if (!hasValidLatLng(a) || !hasValidLatLng(b)) return Number.POSITIVE_INFINITY
-
-  const earthRadius = 6371000
-  const toRadians = degrees => (degrees * Math.PI) / 180
-  const lat1 = toRadians(Number(a.lat))
-  const lat2 = toRadians(Number(b.lat))
-  const deltaLat = lat2 - lat1
-  const deltaLng = toRadians(Number(b.lng) - Number(a.lng))
-  const haversine =
-    Math.sin(deltaLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2
-
-  return 2 * earthRadius * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
-}
-
 function getVisibleWeatherSignals(weatherSignals, selectedVenue) {
   if (!hasValidLatLng(selectedVenue)) return weatherSignals
-
   return weatherSignals.filter(signal => (
     signal.venueId === selectedVenue.id || getDistanceInMeters(signal, selectedVenue) <= FOCUSED_WEATHER_RADIUS_METERS
   ))
@@ -51,23 +28,11 @@ function getVisibleWeatherSignals(weatherSignals, selectedVenue) {
 
 function focusMap(map, selectedVenue) {
   if (!map) return
-
   if (hasValidLatLng(selectedVenue)) {
-    map.setCamera({
-      center: toCoordinatePair(selectedVenue),
-      zoom: FOCUSED_VENUE_ZOOM,
-      type: 'ease',
-      duration: 1200
-    })
+    map.setCamera({ center: toCoordinatePair(selectedVenue), zoom: FOCUSED_VENUE_ZOOM, type: 'ease', duration: 1200 })
     return
   }
-
-  map.setCamera({
-    center: DEFAULT_ALL_VENUES_CENTER,
-    zoom: DEFAULT_ALL_VENUES_ZOOM,
-    type: 'ease',
-    duration: 1200
-  })
+  map.setCamera({ center: DEFAULT_ALL_VENUES_CENTER, zoom: DEFAULT_ALL_VENUES_ZOOM, type: 'ease', duration: 1200 })
 }
 
 function getWeatherTileTimestamp(date = new Date()) {
@@ -82,18 +47,12 @@ function buildWeatherTileUrl(timeStamp = getWeatherTileTimestamp()) {
 
 function syncWeatherOverlay(map, enabled) {
   if (!map || !map.layers) return
-
   const existingLayer = map.layers.getLayerById(WEATHER_OVERLAY_ID)
-
   if (!enabled) {
-    if (existingLayer) {
-      map.layers.remove(existingLayer)
-    }
+    if (existingLayer) map.layers.remove(existingLayer)
     return
   }
-
   if (existingLayer) return
-
   const weatherOverlay = new atlas.layer.TileLayer({
     tileUrl: buildWeatherTileUrl(),
     opacity: 0.65,
@@ -101,11 +60,27 @@ function syncWeatherOverlay(map, enabled) {
     fadeDuration: 0,
     visible: true
   }, WEATHER_OVERLAY_ID)
-
   map.layers.add(weatherOverlay, 'labels')
 }
 
-export default function LiveMap() {
+function isWebGLSupported() {
+  try {
+    const canvas = document.createElement('canvas')
+    return !!(window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')))
+  } catch {
+    return false
+  }
+}
+
+export default function LiveMap({
+  venues = [],
+  incidents = [],
+  weatherSignals = [],
+  layers,
+  selectedVenueId,
+  onVenueClick,
+  onBackgroundClick
+}) {
   const mapContainer = useRef(null)
   const mapRef = useRef(null)
   const popupRef = useRef(null)
@@ -113,60 +88,58 @@ export default function LiveMap() {
   const readyHandlerRef = useRef(null)
   const clickHandlerRef = useRef(null)
   const isDisposedRef = useRef(false)
-  const { data: venues } = useData('venues')
-  const { data: incidents } = useData('incidents')
-  const [searchParams] = useSearchParams()
-  const selectedVenueId = searchParams.get('venue') || ''
-  const selectedVenue = useMemo(
-    () => venues.find(venue => venue.id === selectedVenueId) || null,
-    [venues, selectedVenueId]
-  )
-  const validVenues = useMemo(() => venues.filter(hasValidLatLng), [venues])
-  const validIncidents = useMemo(() => incidents.filter(hasValidLatLng), [incidents])
-  const [showVenues, setShowVenues] = useState(true)
-  const [showIncidents, setShowIncidents] = useState(true)
-  const [showTraffic, setShowTraffic] = useState(false)
-  const [showWeather, setShowWeather] = useState(true)
   const [mapReady, setMapReady] = useState(false)
-  const { weatherSignals, weatherMode, weatherStatus } = useVenueWeather(validVenues)
-  const visibleWeatherSignals = useMemo(
-    () => getVisibleWeatherSignals(weatherSignals, selectedVenue),
-    [weatherSignals, selectedVenue]
-  )
+  const [mapInitError, setMapInitError] = useState(null)
 
+  const selectedVenue = useMemo(() => venues.find(v => v.id === selectedVenueId) || null, [venues, selectedVenueId])
+  const visibleWeatherSignals = useMemo(() => getVisibleWeatherSignals(weatherSignals, selectedVenue), [weatherSignals, selectedVenue])
+
+  // Initialize map
   useEffect(() => {
     if (!AZURE_MAPS_KEY || !mapContainer.current || mapRef.current) return
+    if (!isWebGLSupported()) {
+      setMapInitError('WebGL is not supported or is disabled in this browser.')
+      return
+    }
 
     isDisposedRef.current = false
-    const initialCenter = hasValidLatLng(selectedVenue)
-      ? toCoordinatePair(selectedVenue)
-      : DEFAULT_ALL_VENUES_CENTER
+    const initialCenter = hasValidLatLng(selectedVenue) ? toCoordinatePair(selectedVenue) : DEFAULT_ALL_VENUES_CENTER
 
-    const map = new atlas.Map(mapContainer.current, {
-      view: 'Auto',
-      center: initialCenter,
-      zoom: hasValidLatLng(selectedVenue) ? FOCUSED_VENUE_ZOOM : DEFAULT_ALL_VENUES_ZOOM,
-      style: 'grayscale_dark',
-      authOptions: {
-        authType: atlas.AuthenticationType.subscriptionKey,
-        subscriptionKey: AZURE_MAPS_KEY
-      }
-    })
+    let map
+    try {
+      map = new atlas.Map(mapContainer.current, {
+        view: 'Auto',
+        center: initialCenter,
+        zoom: hasValidLatLng(selectedVenue) ? FOCUSED_VENUE_ZOOM : DEFAULT_ALL_VENUES_ZOOM,
+        style: 'grayscale_dark',
+        authOptions: {
+          authType: atlas.AuthenticationType.subscriptionKey,
+          subscriptionKey: AZURE_MAPS_KEY
+        }
+      })
+    } catch (err) {
+      setMapInitError(err.message || 'Failed to initialize Azure Maps.')
+      return
+    }
 
     mapRef.current = map
 
     const handleMapClick = event => {
       if (isDisposedRef.current || !popupRef.current) return
-
       const shapes = map.layers.getRenderedShapes(event.position)
-      if (!shapes.length) return
-
+      if (!shapes.length) {
+        onBackgroundClick?.()
+        popupRef.current.close()
+        return
+      }
       const shape = shapes[0]
       const properties = shape.getProperties?.() || {}
       const geometryType = shape.getType?.()
-      const coordinates = geometryType === 'Point'
-        ? shape.getCoordinates()
-        : event.position
+      const coordinates = geometryType === 'Point' ? shape.getCoordinates() : event.position
+
+      if (properties.layerType === 'venue' && properties._venueId) {
+        onVenueClick?.(properties._venueId)
+      }
 
       popupRef.current.setOptions({
         content: `<div style="padding:10px;font-family:sans-serif;min-width:220px">
@@ -181,47 +154,29 @@ export default function LiveMap() {
 
     const handleReady = () => {
       if (isDisposedRef.current) return
-
       popupRef.current = new atlas.Popup({ pixelOffset: [0, -18] })
       const source = new atlas.source.DataSource()
       map.sources.add(source)
       dataSourceRef.current = source
 
       map.layers.add(new atlas.layer.SymbolLayer(source, 'venue-points', {
-        iconOptions: {
-          image: 'pin-round-darkblue',
-          allowOverlap: true
-        },
-        textOptions: {
-          textField: ['get', 'title'],
-          offset: [0, 1.2],
-          color: '#e2e8f0',
-          size: 12,
-          allowOverlap: true
-        },
+        iconOptions: { image: 'pin-round-darkblue', allowOverlap: true },
+        textOptions: { textField: ['get', 'title'], offset: [0, 1.2], color: '#e2e8f0', size: 12, allowOverlap: true },
         filter: ['==', ['get', 'layerType'], 'venue']
       }))
 
       map.layers.add(new atlas.layer.BubbleLayer(source, 'incident-points', {
-        radius: 8,
-        color: ['get', 'color'],
-        strokeColor: '#ffffff',
-        strokeWidth: 2,
+        radius: 8, color: ['get', 'color'], strokeColor: '#ffffff', strokeWidth: 2,
         filter: ['==', ['get', 'layerType'], 'incident']
       }))
 
       map.layers.add(new atlas.layer.BubbleLayer(source, 'weather-points', {
-        radius: 12,
-        color: ['get', 'color'],
-        opacity: 0.75,
-        strokeColor: '#ffffff',
-        strokeWidth: 2,
+        radius: 12, color: ['get', 'color'], opacity: 0.75, strokeColor: '#ffffff', strokeWidth: 2,
         filter: ['==', ['get', 'layerType'], 'weather']
       }))
 
       clickHandlerRef.current = handleMapClick
       map.events.add('click', clickHandlerRef.current)
-
       focusMap(map, selectedVenue)
       setMapReady(true)
     }
@@ -232,76 +187,56 @@ export default function LiveMap() {
     return () => {
       isDisposedRef.current = true
       setMapReady(false)
-
-      if (popupRef.current) {
-        popupRef.current.close()
-        popupRef.current = null
-      }
-
-      if (readyHandlerRef.current) {
-        map.events.remove('ready', readyHandlerRef.current)
-        readyHandlerRef.current = null
-      }
-
-      if (clickHandlerRef.current) {
-        map.events.remove('click', clickHandlerRef.current)
-        clickHandlerRef.current = null
-      }
-
-      if (map.layers.getLayerById(WEATHER_OVERLAY_ID)) {
-        map.layers.remove(WEATHER_OVERLAY_ID)
-      }
-
+      if (popupRef.current) { popupRef.current.close(); popupRef.current = null }
+      if (readyHandlerRef.current) { map.events.remove('ready', readyHandlerRef.current); readyHandlerRef.current = null }
+      if (clickHandlerRef.current) { map.events.remove('click', clickHandlerRef.current); clickHandlerRef.current = null }
+      if (map.layers.getLayerById(WEATHER_OVERLAY_ID)) map.layers.remove(WEATHER_OVERLAY_ID)
       dataSourceRef.current = null
       mapRef.current = null
       map.dispose()
     }
-  }, [validVenues, selectedVenue])
+  }, [onVenueClick, onBackgroundClick]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Focus camera when selected venue changes
   useEffect(() => {
-    const map = mapRef.current
-    if (!mapReady || !map) return
-
-    focusMap(map, selectedVenue)
+    if (mapReady && mapRef.current) focusMap(mapRef.current, selectedVenue)
   }, [mapReady, selectedVenue])
 
+  // Toggle traffic
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
+    map.setTraffic({ flow: layers.traffic ? 'relative' : 'none', incidents: false })
+  }, [mapReady, layers.traffic])
 
-    map.setTraffic({
-      flow: showTraffic ? 'relative' : 'none',
-      incidents: false
-    })
-  }, [mapReady, showTraffic])
-
+  // Toggle weather radar overlay
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
+    syncWeatherOverlay(map, layers.weatherRadar)
+  }, [mapReady, layers.weatherRadar])
 
-    syncWeatherOverlay(map, showWeather)
-  }, [mapReady, showWeather])
-
+  // Update data source shapes
   useEffect(() => {
     const source = dataSourceRef.current
     if (!mapReady || !source) return
-
     source.clear()
 
-    if (showVenues) {
-      source.add(validVenues.map(v => new atlas.data.Feature(
+    if (layers.venues) {
+      source.add(venues.map(v => new atlas.data.Feature(
         new atlas.data.Point(toCoordinatePair(v)),
         {
           layerType: 'venue',
           title: v.name,
           subtitle: `${v.city}, ${v.country}`,
-          detail: `Status: ${v.status} • Risk: ${v.riskLevel}`
+          detail: `Status: ${v.status} • Risk: ${v.riskLevel}`,
+          _venueId: v.id
         }
       )))
     }
 
-    if (showIncidents) {
-      source.add(validIncidents.map(i => new atlas.data.Feature(
+    if (layers.incidents) {
+      source.add(incidents.map(i => new atlas.data.Feature(
         new atlas.data.Point(toCoordinatePair(i)),
         {
           layerType: 'incident',
@@ -313,7 +248,7 @@ export default function LiveMap() {
       )))
     }
 
-    if (showWeather) {
+    if (layers.weatherMarkers) {
       source.add(visibleWeatherSignals.map(signal => new atlas.data.Feature(
         new atlas.data.Point(toCoordinatePair(signal)),
         {
@@ -325,104 +260,39 @@ export default function LiveMap() {
         }
       )))
     }
-  }, [mapReady, validVenues, validIncidents, showVenues, showIncidents, showWeather, visibleWeatherSignals])
+  }, [mapReady, venues, incidents, layers.venues, layers.incidents, layers.weatherMarkers, visibleWeatherSignals])
 
-  const renderFallback = () => (
-    <div style={{ background: '#1e293b', borderRadius: 8, padding: '1rem', border: '1px solid #334155' }}>
-      <h2 style={{ marginTop: 0 }}>Map Preview Unavailable</h2>
-      <p style={{ color: '#cbd5e1' }}>
-        Add <code>VITE_AZURE_MAPS_KEY</code> to enable the interactive Azure Maps experience.
-        Venue coverage, Azure Maps traffic, and a live weather radar overlay are preconfigured, while venue weather markers fall back to static simulation.
-      </p>
-      {selectedVenue && (
-        <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: '#0f172a', borderRadius: 6, color: '#bae6fd' }}>
-          Focused venue: <strong>{selectedVenue.name}</strong> ({selectedVenue.city}, {selectedVenue.country})
-        </div>
-      )}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-        <div>
-          <h3>Venues ({venues.length})</h3>
-          {venues.map(v => (
-            <div key={v.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid #334155', color: '#e2e8f0' }}>
-              <strong>{v.name}</strong>
-              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{v.city}, {v.country}</div>
-            </div>
-          ))}
-        </div>
-        <div>
-          <h3>Operational overlays</h3>
-          <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Live Azure Maps traffic flow available when toggled on</div>
-          <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Azure Maps weather radar overlay available when toggled on</div>
-          <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Weather markers shown for visible venues: {visibleWeatherSignals.length}</div>
-          <div style={{ color: '#e2e8f0', padding: '0.25rem 0' }}>Open incidents: {incidents.filter(i => i.status === 'open').length}</div>
-        </div>
-      </div>
-    </div>
-  )
-
-  return (
-    <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-        <div>
-          <h1 style={{ marginBottom: '0.5rem' }}>Live Map</h1>
-          {selectedVenue && (
-            <p style={{ marginTop: 0, color: '#94a3b8' }}>
-              Focused on <strong style={{ color: '#e2e8f0' }}>{selectedVenue.name}</strong> in {selectedVenue.city}, {selectedVenue.country}.
-              {' '}<Link to="/map" style={{ color: '#38bdf8' }}>Show all venues</Link>
-            </p>
-          )}
-          {!selectedVenue && selectedVenueId && (
-            <p style={{ marginTop: 0, color: '#fda4af' }}>
-              Venue <strong>{selectedVenueId}</strong> was not found. Showing all venues instead.
-            </p>
-          )}
-        </div>
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.5rem', alignItems: 'center' }}>
-        <label style={{ color: '#cbd5e1', cursor: 'pointer' }}>
-          <input type="checkbox" checked={showVenues} onChange={() => setShowVenues(s => !s)} /> Venues
-        </label>
-        <label style={{ color: '#cbd5e1', cursor: 'pointer' }}>
-          <input type="checkbox" checked={showIncidents} onChange={() => setShowIncidents(s => !s)} /> Incidents
-        </label>
-        <label style={{ color: '#cbd5e1', cursor: 'pointer' }}>
-          <input type="checkbox" checked={showTraffic} onChange={() => setShowTraffic(s => !s)} /> Live Traffic
-        </label>
-        <label style={{ color: '#cbd5e1', cursor: 'pointer' }}>
-          <input type="checkbox" checked={showWeather} onChange={() => setShowWeather(s => !s)} /> Weather Overlay + Markers
-        </label>
-      </div>
-      <div style={{
-        background: weatherMode === 'fallback' ? '#7c2d12' : '#0f766e',
-        color: weatherMode === 'fallback' ? '#fed7aa' : '#ccfbf1',
-        padding: '0.75rem 1rem',
-        borderRadius: 6,
-        marginBottom: '0.75rem',
-        fontWeight: 600
-      }}>
-        {weatherStatus}
-      </div>
-      {!AZURE_MAPS_KEY && (
-        <div style={{
-          background: '#7c2d12',
-          color: '#fed7aa',
-          padding: '0.75rem 1rem',
-          borderRadius: 6,
-          marginBottom: '0.75rem',
-          fontWeight: 600
-        }}>
-          ⚠️ Missing VITE_AZURE_MAPS_KEY. Showing a non-map operational fallback instead.
-        </div>
-      )}
-      {AZURE_MAPS_KEY ? (
-        <>
-          <div ref={mapContainer} style={{ width: '100%', height: 560, borderRadius: 8, border: '1px solid #334155' }} />
-          <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginTop: '0.75rem' }}>
-            Live weather markers are loaded from Azure Maps Current Conditions for each venue and refresh every 10 minutes.
-            The Weather Overlay toggle also adds an Azure Maps radar tile layer so precipitation patterns are visible across the full map.
+  if (mapInitError) {
+    return (
+      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+        <div style={{ background: '#1e293b', borderRadius: 8, padding: '1.5rem', border: '1px solid #334155', maxWidth: 600, width: '100%' }}>
+          <h2 style={{ marginTop: 0, color: '#f87171' }}>Map Unavailable</h2>
+          <p style={{ color: '#cbd5e1' }}>
+            The interactive map could not load because WebGL is disabled or unavailable in this browser.
+            Try enabling hardware acceleration, or use a different browser/device.
           </p>
-        </>
-      ) : renderFallback()}
-    </div>
-  )
+          <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>{mapInitError}</p>
+          <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div>
+              <h3 style={{ color: '#e2e8f0', fontSize: '1rem' }}>Venues ({venues.length})</h3>
+              {venues.map(v => (
+                <div key={v.id} style={{ padding: '0.35rem 0', borderBottom: '1px solid #334155', color: '#e2e8f0', fontSize: '0.85rem' }}>
+                  <strong>{v.name}</strong>
+                  <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{v.city}, {v.country}</div>
+                </div>
+              ))}
+            </div>
+            <div>
+              <h3 style={{ color: '#e2e8f0', fontSize: '1rem' }}>Open Incidents</h3>
+              <div style={{ color: '#e2e8f0', fontSize: '0.85rem' }}>{incidents.filter(i => i.status === 'open').length} active incidents</div>
+              <h3 style={{ color: '#e2e8f0', fontSize: '1rem', marginTop: '1rem' }}>Weather Signals</h3>
+              <div style={{ color: '#e2e8f0', fontSize: '0.85rem' }}>{visibleWeatherSignals.length} venue weather markers</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
 }
