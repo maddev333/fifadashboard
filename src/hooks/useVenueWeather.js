@@ -1,15 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { hasValidLatLng } from '../utils/geo'
 
 const AZURE_MAPS_KEY = import.meta.env.VITE_AZURE_MAPS_KEY
 const WEATHER_REFRESH_MS = 10 * 60 * 1000
-
-function isFiniteCoordinate(value) {
-  return value != null && value !== '' && Number.isFinite(Number(value))
-}
-
-export function hasValidLatLng(item) {
-  return item && isFiniteCoordinate(item.lat) && isFiniteCoordinate(item.lng)
-}
 
 export function normalizeCondition(iconCode = '') {
   const code = iconCode.toString().toLowerCase()

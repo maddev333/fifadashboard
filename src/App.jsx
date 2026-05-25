@@ -1,27 +1,40 @@
 import { Routes, Route } from 'react-router-dom'
-import Header from './components/Header'
-import Dashboard from './pages/Dashboard'
-import LiveMap from './pages/LiveMap'
-import MatchOps from './pages/MatchOps'
-import IntelligenceFeed from './pages/IntelligenceFeed'
-import Staffing from './pages/Staffing'
+import { Link } from 'react-router-dom'
+import { MapErrorBoundary } from './components/ErrorBoundary'
+import MapPage from './pages/MapPage'
 import Admin from './pages/Admin'
+
+function AdminLayout() {
+  return (
+    <div style={{ minHeight: '100vh', background: '#0f172a', color: '#e2e8f0' }}>
+      <div style={{
+        background: '#0f172a',
+        padding: '0.75rem 1rem',
+        borderBottom: '1px solid #1e293b',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }}>
+        <Link to="/" style={{ color: '#38bdf8', textDecoration: 'none', fontWeight: 600 }}>← Back to Map</Link>
+        <div style={{ fontWeight: 700 }}>Admin</div>
+      </div>
+      <main style={{ padding: '1rem' }}>
+        <Admin />
+      </main>
+    </div>
+  )
+}
 
 function App() {
   return (
-    <div>
-      <Header />
-      <main style={{ padding: '1rem' }}>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/map" element={<LiveMap />} />
-          <Route path="/matches" element={<MatchOps />} />
-          <Route path="/feed" element={<IntelligenceFeed />} />
-          <Route path="/staffing" element={<Staffing />} />
-          <Route path="/admin" element={<Admin />} />
-        </Routes>
-      </main>
-    </div>
+    <Routes>
+      <Route path="/" element={
+        <MapErrorBoundary>
+          <MapPage />
+        </MapErrorBoundary>
+      } />
+      <Route path="/admin" element={<AdminLayout />} />
+    </Routes>
   )
 }
 
