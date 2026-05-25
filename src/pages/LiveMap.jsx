@@ -4,8 +4,8 @@ import { hasValidLatLng, toCoordinatePair, getDistanceInMeters } from '../utils/
 
 const AZURE_MAPS_KEY = import.meta.env.VITE_AZURE_MAPS_KEY
 const FOCUSED_VENUE_ZOOM = 11
-const DEFAULT_ALL_VENUES_CENTER = [-98.5795, 39.8283]
-const DEFAULT_ALL_VENUES_ZOOM = 4
+const FIFA_HOST_REGION_CENTER = [-99.5, 37.5]
+const DEFAULT_ALL_VENUES_ZOOM = 3
 const FOCUSED_WEATHER_RADIUS_METERS = 25000
 const WEATHER_OVERLAY_ID = 'weather-radar-overlay'
 
@@ -17,6 +17,14 @@ function getWeatherColor(condition) {
     case 'Snow': return '#e2e8f0'
     default: return '#facc15'
   }
+}
+
+function getVenueMarkerColor(venue, selectedVenueId, featuredVenueId) {
+  if (venue.id === selectedVenueId) return '#22c55e'
+  if (venue.id === featuredVenueId) return '#f59e0b'
+  if (venue.riskLevel === 'high') return '#ef4444'
+  if (venue.status === 'caution') return '#f97316'
+  return '#2563eb'
 }
 
 function getVisibleWeatherSignals(weatherSignals, selectedVenue) {
@@ -32,7 +40,7 @@ function focusMap(map, selectedVenue) {
     map.setCamera({ center: toCoordinatePair(selectedVenue), zoom: FOCUSED_VENUE_ZOOM, type: 'ease', duration: 1200 })
     return
   }
-  map.setCamera({ center: DEFAULT_ALL_VENUES_CENTER, zoom: DEFAULT_ALL_VENUES_ZOOM, type: 'ease', duration: 1200 })
+  map.setCamera({ center: FIFA_HOST_REGION_CENTER, zoom: DEFAULT_ALL_VENUES_ZOOM, type: 'ease', duration: 1200 })
 }
 
 function getWeatherTileTimestamp(date = new Date()) {
@@ -78,6 +86,8 @@ export default function LiveMap({
   weatherSignals = [],
   layers,
   selectedVenueId,
+  featuredVenueId,
+  todayMatches = [],
   onVenueClick,
   onBackgroundClick
 }) {
@@ -93,6 +103,7 @@ export default function LiveMap({
 
   const selectedVenue = useMemo(() => venues.find(v => v.id === selectedVenueId) || null, [venues, selectedVenueId])
   const visibleWeatherSignals = useMemo(() => getVisibleWeatherSignals(weatherSignals, selectedVenue), [weatherSignals, selectedVenue])
+  const todayMatchVenueIds = useMemo(() => new Set(todayMatches.map(match => match.venueId)), [todayMatches])
 
   // Initialize map
   useEffect(() => {
@@ -103,7 +114,7 @@ export default function LiveMap({
     }
 
     isDisposedRef.current = false
-    const initialCenter = hasValidLatLng(selectedVenue) ? toCoordinatePair(selectedVenue) : DEFAULT_ALL_VENUES_CENTER
+    const initialCenter = hasValidLatLng(selectedVenue) ? toCoordinatePair(selectedVenue) : FIFA_HOST_REGION_CENTER
 
     let map
     try {
@@ -142,8 +153,8 @@ export default function LiveMap({
       }
 
       popupRef.current.setOptions({
-        content: `<div style="padding:10px;font-family:sans-serif;min-width:220px">
-          <strong>${properties.title || 'Map item'}</strong><br/>
+        content: `<div style="padding:10px;font-family:sans-serif;min-width:240px">
+          <strong>${properties.title || 'FIFA venue'}</strong><br/>
           <span>${properties.subtitle || ''}</span><br/>
           <span style="color:#475569">${properties.detail || ''}</span>
         </div>`,
@@ -159,9 +170,23 @@ export default function LiveMap({
       map.sources.add(source)
       dataSourceRef.current = source
 
+      map.layers.add(new atlas.layer.BubbleLayer(source, 'venue-bubbles', {
+        radius: ['interpolate', ['linear'], ['get', 'matchCount'], 0, 10, 3, 16, 7, 22],
+        color: ['get', 'markerColor'],
+        strokeColor: '#ffffff',
+        strokeWidth: 2,
+        opacity: 0.9,
+        filter: ['==', ['get', 'layerType'], 'venue']
+      }))
+
       map.layers.add(new atlas.layer.SymbolLayer(source, 'venue-points', {
-        iconOptions: { image: 'pin-round-darkblue', allowOverlap: true },
-        textOptions: { textField: ['get', 'title'], offset: [0, 1.2], color: '#e2e8f0', size: 12, allowOverlap: true },
+        textOptions: {
+          textField: ['get', 'shortLabel'],
+          offset: [0, 1.4],
+          color: '#e2e8f0',
+          size: 12,
+          allowOverlap: true
+        },
         filter: ['==', ['get', 'layerType'], 'venue']
       }))
 
@@ -228,8 +253,13 @@ export default function LiveMap({
         {
           layerType: 'venue',
           title: v.name,
-          subtitle: `${v.city}, ${v.country}`,
-          detail: `Status: ${v.status} • Risk: ${v.riskLevel}`,
+          shortLabel: v.city,
+          subtitle: `${v.hostLabel || `${v.city}, ${v.country}`} • ${v.matchCount || 0} matches`,
+          detail: v.nextMatch
+            ? `Next: ${v.nextMatch.homeTeam} vs ${v.nextMatch.awayTeam} • ${v.nextMatch.date}${todayMatchVenueIds.has(v.id) ? ' • Matchday venue' : ''}`
+            : `Status: ${v.status} • Risk: ${v.riskLevel}`,
+          markerColor: getVenueMarkerColor(v, selectedVenueId, featuredVenueId),
+          matchCount: v.matchCount || 0,
           _venueId: v.id
         }
       )))
@@ -260,7 +290,7 @@ export default function LiveMap({
         }
       )))
     }
-  }, [mapReady, venues, incidents, layers.venues, layers.incidents, layers.weatherMarkers, visibleWeatherSignals])
+  }, [mapReady, venues, incidents, layers.venues, layers.incidents, layers.weatherMarkers, visibleWeatherSignals, selectedVenueId, featuredVenueId, todayMatchVenueIds])
 
   if (mapInitError) {
     return (
@@ -274,17 +304,19 @@ export default function LiveMap({
           <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>{mapInitError}</p>
           <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
-              <h3 style={{ color: '#e2e8f0', fontSize: '1rem' }}>Venues ({venues.length})</h3>
+              <h3 style={{ color: '#e2e8f0', fontSize: '1rem' }}>FIFA Venues ({venues.length})</h3>
               {venues.map(v => (
                 <div key={v.id} style={{ padding: '0.35rem 0', borderBottom: '1px solid #334155', color: '#e2e8f0', fontSize: '0.85rem' }}>
                   <strong>{v.name}</strong>
-                  <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{v.city}, {v.country}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{v.city}, {v.country} • {v.matchCount || 0} matches</div>
                 </div>
               ))}
             </div>
             <div>
               <h3 style={{ color: '#e2e8f0', fontSize: '1rem' }}>Open Incidents</h3>
               <div style={{ color: '#e2e8f0', fontSize: '0.85rem' }}>{incidents.filter(i => i.status === 'open').length} active incidents</div>
+              <h3 style={{ color: '#e2e8f0', fontSize: '1rem', marginTop: '1rem' }}>Matchday Venues</h3>
+              <div style={{ color: '#e2e8f0', fontSize: '0.85rem' }}>{todayMatches.length} matches on the selected FIFA schedule day</div>
               <h3 style={{ color: '#e2e8f0', fontSize: '1rem', marginTop: '1rem' }}>Weather Signals</h3>
               <div style={{ color: '#e2e8f0', fontSize: '0.85rem' }}>{visibleWeatherSignals.length} venue weather markers</div>
             </div>
