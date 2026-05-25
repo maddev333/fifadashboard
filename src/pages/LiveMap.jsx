@@ -88,6 +88,7 @@ export default function LiveMap({
   selectedVenueId,
   featuredVenueId,
   todayMatches = [],
+  nextMatchCountdown,
   onVenueClick,
   onBackgroundClick
 }) {
@@ -156,7 +157,8 @@ export default function LiveMap({
         content: `<div style="padding:10px;font-family:sans-serif;min-width:240px">
           <strong>${properties.title || 'FIFA venue'}</strong><br/>
           <span>${properties.subtitle || ''}</span><br/>
-          <span style="color:#475569">${properties.detail || ''}</span>
+          <span style="color:#475569">${properties.detail || ''}</span><br/>
+          ${properties.countdown ? `<span style="display:inline-block;margin-top:6px;color:#ea580c;font-weight:700">Countdown: ${properties.countdown}</span>` : ''}
         </div>`,
         position: coordinates
       })
@@ -258,6 +260,7 @@ export default function LiveMap({
           detail: v.nextMatch
             ? `Next: ${v.nextMatch.homeTeam} vs ${v.nextMatch.awayTeam} • ${v.nextMatch.date}${todayMatchVenueIds.has(v.id) ? ' • Matchday venue' : ''}`
             : `Status: ${v.status} • Risk: ${v.riskLevel}`,
+          countdown: v.nextMatchCountdown || '',
           markerColor: getVenueMarkerColor(v, selectedVenueId, featuredVenueId),
           matchCount: v.matchCount || 0,
           _venueId: v.id
@@ -302,6 +305,11 @@ export default function LiveMap({
             Try enabling hardware acceleration, or use a different browser/device.
           </p>
           <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>{mapInitError}</p>
+          {nextMatchCountdown && (
+            <p style={{ color: '#fdba74', fontSize: '0.95rem', fontWeight: 700 }}>
+              Next match countdown: {nextMatchCountdown}
+            </p>
+          )}
           <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
               <h3 style={{ color: '#e2e8f0', fontSize: '1rem' }}>FIFA Venues ({venues.length})</h3>
@@ -309,6 +317,9 @@ export default function LiveMap({
                 <div key={v.id} style={{ padding: '0.35rem 0', borderBottom: '1px solid #334155', color: '#e2e8f0', fontSize: '0.85rem' }}>
                   <strong>{v.name}</strong>
                   <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{v.city}, {v.country} • {v.matchCount || 0} matches</div>
+                  {v.nextMatchCountdown && (
+                    <div style={{ fontSize: '0.75rem', color: '#fdba74' }}>Countdown: {v.nextMatchCountdown}</div>
+                  )}
                 </div>
               ))}
             </div>
