@@ -9,6 +9,10 @@ import KpiOverlay from '../components/KpiOverlay'
 import LayerPanel from '../components/LayerPanel'
 import DetailDrawer from '../components/DetailDrawer'
 
+function compareMatchDates(a, b) {
+  return new Date(a.date) - new Date(b.date)
+}
+
 export default function MapPage() {
   const { data: venues } = useData('venues')
   const { data: incidents } = useData('incidents')
@@ -24,13 +28,46 @@ export default function MapPage() {
     weatherMarkers: true,
   })
 
-  const [selectedVenueId, setSelectedVenueId] = useState(null)
-  const [drawerTab, setDrawerTab] = useState(null)
-
   const validVenues = useMemo(() => venues.filter(hasValidLatLng), [venues])
   const validIncidents = useMemo(() => incidents.filter(hasValidLatLng), [incidents])
 
-  const { weatherSignals, weatherMode, weatherStatus } = useVenueWeather(validVenues)
+  const matchesByVenue = useMemo(() => {
+    return matches.reduce((acc, match) => {
+      acc[match.venueId] = [...(acc[match.venueId] || []), match].sort(compareMatchDates)
+      return acc
+    }, {})
+  }, [matches])
+
+  const fifaVenues = useMemo(() => (
+    validVenues.map(venue => {
+      const venueMatches = matchesByVenue[venue.id] || []
+      const nextMatch = venueMatches.find(match => new Date(match.date) >= new Date(new Date().toISOString().split('T')[0])) || venueMatches[0] || null
+      return {
+        ...venue,
+        matches: venueMatches,
+        matchCount: venueMatches.length,
+        hasMatch: venueMatches.length > 0,
+        nextMatch,
+        hostLabel: `${venue.city}, ${venue.country}`,
+        venueLabel: venueMatches.length > 0
+          ? `${venueMatches.length} FIFA matches`
+          : 'FIFA venue'
+      }
+    })
+  ), [validVenues, matchesByVenue])
+
+  const featuredVenue = useMemo(() => {
+    return fifaVenues
+      .filter(venue => venue.nextMatch)
+      .sort((a, b) => compareMatchDates(a.nextMatch, b.nextMatch))[0] || fifaVenues[0] || null
+  }, [fifaVenues])
+
+  const [selectedVenueId, setSelectedVenueId] = useState(null)
+  const [drawerTab, setDrawerTab] = useState(null)
+
+  const effectiveSelectedVenueId = selectedVenueId || featuredVenue?.id || null
+
+  const { weatherSignals, weatherMode, weatherStatus } = useVenueWeather(fifaVenues)
 
   const handleVenueClick = useCallback((venueId) => {
     setSelectedVenueId(venueId)
@@ -48,23 +85,24 @@ export default function MapPage() {
   const openIncidents = incidents.filter(i => i.status === 'open').length
   const openShifts = staffing.filter(s => s.status === 'open').length
   const criticalAlerts = alerts.filter(a => a.severity === 'critical').length
+  const totalHostedMatches = matches.length
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#0f172a', overflow: 'hidden' }}>
-      {/* Map fills the background */}
       <div style={{ position: 'absolute', inset: 0 }}>
         <LiveMap
-          venues={validVenues}
+          venues={fifaVenues}
           incidents={validIncidents}
           weatherSignals={weatherSignals}
           layers={layers}
-          selectedVenueId={selectedVenueId}
+          selectedVenueId={effectiveSelectedVenueId}
+          featuredVenueId={featuredVenue?.id || null}
+          todayMatches={todayMatches}
           onVenueClick={handleVenueClick}
           onBackgroundClick={handleBackgroundClick}
         />
       </div>
 
-      {/* Minimal floating header */}
       <div style={{
         position: 'absolute',
         top: 0,
@@ -78,8 +116,13 @@ export default function MapPage() {
         zIndex: 10,
         background: 'linear-gradient(to bottom, rgba(15,23,42,0.8), transparent)'
       }}>
-        <div style={{ pointerEvents: 'auto', fontWeight: 700, fontSize: '1.1rem', color: 'white', textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
-          ⚽ World Cup Ops
+        <div style={{ pointerEvents: 'auto', display: 'flex', flexDirection: 'column', gap: '0.1rem', color: 'white', textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+          <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>⚽ FIFA World Cup 2026 Venue Map</div>
+          <div style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>
+            {featuredVenue?.nextMatch
+              ? `Next venue in focus: ${featuredVenue.name} • ${featuredVenue.nextMatch.homeTeam} vs ${featuredVenue.nextMatch.awayTeam} on ${featuredVenue.nextMatch.date}`
+              : 'Viewing tournament host venues across the United States, Mexico, and Canada'}
+          </div>
         </div>
         <Link
           to="/admin"
@@ -90,11 +133,13 @@ export default function MapPage() {
       </div>
 
       <KpiOverlay stats={[
-        { label: 'Matches Today', value: todayMatches.length, color: '#38bdf8' },
-        { label: 'Active Venues', value: activeVenues, color: '#22c55e' },
+        { label: 'Tournament Matches', value: totalHostedMatches, color: '#38bdf8' },
+        { label: 'Matches Today', value: todayMatches.length, color: '#22c55e' },
+        { label: 'Host Venues', value: fifaVenues.length, color: '#facc15' },
         { label: 'Open Incidents', value: openIncidents, color: '#ef4444' },
         { label: 'Critical Alerts', value: criticalAlerts, color: '#f59e0b' },
         { label: 'Open Shifts', value: openShifts, color: '#a855f7' },
+        { label: 'Active Venues Today', value: activeVenues, color: '#14b8a6' },
       ]} />
 
       <LayerPanel
@@ -113,7 +158,7 @@ export default function MapPage() {
         staffing={staffing}
         alerts={alerts}
         weatherSignals={weatherSignals}
-        selectedVenueId={selectedVenueId}
+        selectedVenueId={effectiveSelectedVenueId}
       />
     </div>
   )
