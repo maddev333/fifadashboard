@@ -105,6 +105,7 @@ export default function LiveMap({
   const visibleWeatherSignals = useMemo(() => getVisibleWeatherSignals(weatherSignals, selectedVenue), [weatherSignals, selectedVenue])
   const todayMatchVenueIds = useMemo(() => new Set(todayMatches.map(match => match.venueId)), [todayMatches])
 
+  // Initialize map
   useEffect(() => {
     if (!AZURE_MAPS_KEY || !mapContainer.current || mapRef.current) return
     if (!isWebGLSupported()) {
@@ -173,20 +174,18 @@ export default function LiveMap({
         radius: ['interpolate', ['linear'], ['get', 'matchCount'], 0, 10, 3, 16, 7, 22],
         color: ['get', 'markerColor'],
         strokeColor: '#ffffff',
-        strokeWidth: ['case', ['==', ['get', '_venueId'], selectedVenueId], 3, 2],
+        strokeWidth: 2,
         opacity: 0.9,
         filter: ['==', ['get', 'layerType'], 'venue']
       }))
 
       map.layers.add(new atlas.layer.SymbolLayer(source, 'venue-points', {
-        iconOptions: { image: 'none', allowOverlap: true },
         textOptions: {
           textField: ['get', 'shortLabel'],
           offset: [0, 1.4],
           color: '#e2e8f0',
           size: 12,
-          allowOverlap: true,
-          font: ['StandardFont-Bold']
+          allowOverlap: true
         },
         filter: ['==', ['get', 'layerType'], 'venue']
       }))
@@ -223,22 +222,26 @@ export default function LiveMap({
     }
   }, [onVenueClick, onBackgroundClick]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Focus camera when selected venue changes
   useEffect(() => {
     if (mapReady && mapRef.current) focusMap(mapRef.current, selectedVenue)
   }, [mapReady, selectedVenue])
 
+  // Toggle traffic
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
     map.setTraffic({ flow: layers.traffic ? 'relative' : 'none', incidents: false })
   }, [mapReady, layers.traffic])
 
+  // Toggle weather radar overlay
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
     syncWeatherOverlay(map, layers.weatherRadar)
   }, [mapReady, layers.weatherRadar])
 
+  // Update data source shapes
   useEffect(() => {
     const source = dataSourceRef.current
     if (!mapReady || !source) return

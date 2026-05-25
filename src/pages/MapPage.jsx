@@ -65,8 +65,6 @@ export default function MapPage() {
   const [selectedVenueId, setSelectedVenueId] = useState(null)
   const [drawerTab, setDrawerTab] = useState(null)
 
-  const effectiveSelectedVenueId = selectedVenueId || featuredVenue?.id || null
-
   const { weatherSignals, weatherMode, weatherStatus } = useVenueWeather(fifaVenues)
 
   const handleVenueClick = useCallback((venueId) => {
@@ -80,7 +78,7 @@ export default function MapPage() {
   }, [drawerTab])
 
   const today = new Date().toISOString().split('T')[0]
-  const todayMatches = matches.filter(m => m.date === today)
+  const todayMatches = useMemo(() => matches.filter(m => m.date === today), [matches, today])
   const activeVenues = [...new Set(todayMatches.map(m => m.venueId))].length
   const openIncidents = incidents.filter(i => i.status === 'open').length
   const openShifts = staffing.filter(s => s.status === 'open').length
@@ -95,7 +93,7 @@ export default function MapPage() {
           incidents={validIncidents}
           weatherSignals={weatherSignals}
           layers={layers}
-          selectedVenueId={effectiveSelectedVenueId}
+          selectedVenueId={selectedVenueId}
           featuredVenueId={featuredVenue?.id || null}
           todayMatches={todayMatches}
           onVenueClick={handleVenueClick}
@@ -158,7 +156,7 @@ export default function MapPage() {
         staffing={staffing}
         alerts={alerts}
         weatherSignals={weatherSignals}
-        selectedVenueId={effectiveSelectedVenueId}
+        selectedVenueId={selectedVenueId}
       />
     </div>
   )
