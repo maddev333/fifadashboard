@@ -21,8 +21,8 @@ Since GitHub Pages is purely static, the Azure Maps subscription key is exposed 
 - If using a custom domain, add that too.
 
 ### What carries over from the spec
-- All 6 pages: Dashboard, Live Map, Match Ops, Intelligence Feed, Staffing, Admin
-- JSON data models (Venue, Match, Incident, Staffing, Alert)
+- Core pages for Dashboard, Live Map, Match Ops, Intelligence Feed, and Admin experiences
+- JSON data models for Venue, Match, Incident, and Alert
 - Component architecture (header, KPI cards, alert banner, filters)
 - The phased build plan (this scaffold covers Phase 1 plus a lightweight demo admin flow)
 - Dark command-center aesthetic
@@ -41,7 +41,6 @@ This repository now uses the Azure Maps Web SDK traffic flow visualization direc
 │       ├── venues.json
 │       ├── matches.json
 │       ├── incidents.json
-│       ├── staffing.json
 │       └── alerts.json
 ├── src/
 │   ├── components/
@@ -54,7 +53,6 @@ This repository now uses the Azure Maps Web SDK traffic flow visualization direc
 │   │   ├── LiveMap.jsx
 │   │   ├── MatchOps.jsx
 │   │   ├── IntelligenceFeed.jsx
-│   │   ├── Staffing.jsx
 │   │   └── Admin.jsx
 │   ├── styles/
 │   │   └── global.css

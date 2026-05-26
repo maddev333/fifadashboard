@@ -5,7 +5,6 @@ const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 }
 const TAB_CONFIG = [
   { key: 'feed', label: 'Feed' },
   { key: 'matches', label: 'Matches' },
-  { key: 'staffing', label: 'Staffing' },
   { key: 'venue', label: 'Venue' },
 ]
 
@@ -39,18 +38,11 @@ function useIntelligenceFeed(alerts, incidents, weatherSignals) {
   }, [alerts, incidents, weatherSignals])
 }
 
-export default function DetailDrawer({ tab, onTabChange, venues, incidents, matches, staffing, alerts, weatherSignals, selectedVenueId }) {
+export default function DetailDrawer({ tab, onTabChange, venues, incidents, matches, alerts, weatherSignals, selectedVenueId }) {
   const feed = useIntelligenceFeed(alerts, incidents, weatherSignals)
   const selectedVenue = venues.find(v => v.id === selectedVenueId) || null
   const selectedMatches = matches.filter(m => m.venueId === selectedVenueId)
   const selectedIncidents = incidents.filter(i => i.venueId === selectedVenueId)
-
-  const open = staffing.filter(s => s.status === 'open')
-  const byVenue = useMemo(() => venues.map(v => ({
-    ...v,
-    assigned: staffing.filter(s => s.venueId === v.id && s.status === 'assigned').length,
-    open: staffing.filter(s => s.venueId === v.id && s.status === 'open').length
-  })), [venues, staffing])
 
   const isOpen = !!tab
 
@@ -66,7 +58,6 @@ export default function DetailDrawer({ tab, onTabChange, venues, incidents, matc
       gap: '0.5rem',
       alignItems: 'flex-end'
     }}>
-      {/* Tab pills */}
       <div style={{
         display: 'flex',
         flexDirection: 'column',
@@ -100,7 +91,6 @@ export default function DetailDrawer({ tab, onTabChange, venues, incidents, matc
         })}
       </div>
 
-      {/* Drawer content */}
       {isOpen && (
         <div style={{
           width: 320,
@@ -172,39 +162,6 @@ export default function DetailDrawer({ tab, onTabChange, venues, incidents, matc
                     </div>
                   )
                 })}
-              </div>
-            )}
-
-            {tab === 'staffing' && (
-              <div>
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                  <div style={{ flex: 1, background: '#1e293b', borderRadius: 6, padding: '0.5rem', border: '1px solid #334155', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Total</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#38bdf8' }}>{staffing.length}</div>
-                  </div>
-                  <div style={{ flex: 1, background: '#1e293b', borderRadius: 6, padding: '0.5rem', border: '1px solid #334155', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Open</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#ef4444' }}>{open.length}</div>
-                  </div>
-                </div>
-                <table style={{ width: '100%', color: '#e2e8f0', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-                  <thead>
-                    <tr style={{ textAlign: 'left', color: '#94a3b8', fontSize: '0.7rem', textTransform: 'uppercase' }}>
-                      <th style={{ padding: '0.35rem 0' }}>Venue</th>
-                      <th>Assigned</th>
-                      <th>Open</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {byVenue.map(v => (
-                      <tr key={v.id} style={{ borderTop: '1px solid #334155' }}>
-                        <td style={{ padding: '0.35rem 0' }}>{v.name}</td>
-                        <td>{v.assigned}</td>
-                        <td style={{ color: v.open > 0 ? '#ef4444' : '#22c55e' }}>{v.open}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
               </div>
             )}
 
