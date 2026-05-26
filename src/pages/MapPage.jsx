@@ -19,7 +19,7 @@ const CAMERA_FEEDS = {
     label: 'New York camera feed',
     location: 'New York / East Rutherford approach',
     provider: 'NJ 511',
-    streamUrl: 'https://nj-511.wink.co/hls/public/30/WF01-6478-AAD0-D5C0-1E89_high/stream.m3u8?otp=776846918717&_HLS_msn=84023',
+    streamUrl: 'https://nj-511.wink.co/hls/public/30/WF01-6478-AAD0-D5C0-1E89_high/stream.m3u8',
     notes: 'Live HLS traffic camera for the New York metro area near the host venue.'
   }
 }
