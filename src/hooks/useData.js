@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const BASE = import.meta.env.BASE_URL || '/'
 
@@ -6,6 +6,7 @@ export function useData(file, refreshMs = 0) {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const isFirstLoadRef = useRef(true)
 
   useEffect(() => {
     let cancelled = false
@@ -31,7 +32,10 @@ export function useData(file, refreshMs = 0) {
         })
     }
 
-    setLoading(true)
+    if (isFirstLoadRef.current) {
+      isFirstLoadRef.current = false
+      setLoading(true)
+    }
     load()
 
     let timer = null

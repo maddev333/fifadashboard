@@ -6,6 +6,15 @@ const LAYERS = [
   { key: 'weatherMarkers', label: 'Weather Markers', color: '#f59e0b' },
 ]
 
+import { useState } from 'react'
+
+const refreshOptions = [5, 10, 15, 30, 60]
+
+function useOpenState(initial = true) {
+  const [isOpen, setIsOpen] = useState(initial)
+  return [isOpen, (e) => setIsOpen(e.target.open)]
+}
+
 export default function LayerPanel({
   layers,
   onChange,
@@ -15,11 +24,12 @@ export default function LayerPanel({
   onRefreshSecondsChange,
   currentTimeLabel,
 }) {
-  const refreshOptions = [5, 10, 15, 30, 60]
+  const [isOpen, onToggle] = useOpenState(true)
 
   return (
     <details
-      open
+      open={isOpen}
+      onToggle={onToggle}
       style={{
         position: 'absolute',
         top: 56,

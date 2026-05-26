@@ -170,7 +170,7 @@ export default function MapPage() {
   const [selectedVenueId, setSelectedVenueId] = useState(null)
   const [drawerTab, setDrawerTab] = useState(null)
 
-  const { weatherSignals, weatherMode, weatherStatus } = useVenueWeather(hostVenues)
+  const { weatherSignals, weatherMode, weatherStatus } = useVenueWeather(validVenues)
 
   const handleVenueClick = useCallback((venueId) => {
     setSelectedVenueId(venueId)
