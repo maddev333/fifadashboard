@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef, useEffect, useState } from 'react'
 
 const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 }
 
@@ -36,6 +36,92 @@ function useIntelligenceFeed(alerts, incidents, weatherSignals) {
       return new Date(b.timestamp) - new Date(a.timestamp)
     })
   }, [alerts, incidents, weatherSignals])
+}
+
+function CameraFeedPanel({ cameraFeed }) {
+  const videoRef = useRef(null)
+  const [videoError, setVideoError] = useState(false)
+
+  useEffect(() => {
+    if (!cameraFeed?.streamUrl || !videoRef.current) return
+    setVideoError(false)
+
+    const video = videoRef.current
+    let hls = null
+    let cancelled = false
+
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = cameraFeed.streamUrl
+    } else {
+      import('hls.js').then(({ default: Hls }) => {
+        if (cancelled || !videoRef.current) return
+        if (Hls.isSupported()) {
+          hls = new Hls({ enableWorker: true, lowLatencyMode: true })
+          hls.loadSource(cameraFeed.streamUrl)
+          hls.attachMedia(video)
+          hls.on(Hls.Events.ERROR, (_event, data) => {
+            if (data.fatal) {
+              setVideoError(true)
+              hls.destroy()
+            }
+          })
+        } else {
+          setVideoError(true)
+        }
+      }).catch(() => {
+        if (!cancelled) setVideoError(true)
+      })
+    }
+
+    return () => {
+      cancelled = true
+      if (hls) hls.destroy()
+      video.pause()
+      video.removeAttribute('src')
+      video.load()
+    }
+  }, [cameraFeed?.streamUrl])
+
+  if (!cameraFeed) return null
+
+  return (
+    <div style={{ borderTop: '1px solid #334155', paddingTop: '0.5rem' }}>
+      <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', marginBottom: 6 }}>Camera Feed</div>
+      <div style={{ background: '#020617', border: '1px solid #334155', borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{ padding: '0.6rem 0.75rem', borderBottom: '1px solid #334155' }}>
+          <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#e2e8f0' }}>{cameraFeed.title}</div>
+          <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 2 }}>
+            {cameraFeed.location} • {cameraFeed.provider}
+          </div>
+        </div>
+        <div style={{ padding: '0.75rem' }}>
+          {videoError ? (
+            <div style={{ padding: '1.5rem', textAlign: 'center', color: '#ef4444', fontSize: '0.85rem' }}>
+              Camera feed unavailable. The stream may be offline or unsupported on this browser.
+            </div>
+          ) : (
+            <video
+              ref={videoRef}
+              controls
+              autoPlay
+              muted
+              playsInline
+              style={{ width: '100%', borderRadius: 6, background: '#000' }}
+            />
+          )}
+          <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 8 }}>{cameraFeed.notes}</div>
+          <a
+            href={cameraFeed.streamUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: 'inline-block', marginTop: 8, color: '#38bdf8', fontSize: '0.78rem', textDecoration: 'none', fontWeight: 600 }}
+          >
+            Open stream directly →
+          </a>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function DetailDrawer({ tab, onTabChange, venues, incidents, matches, alerts, weatherSignals, selectedVenueId }) {
@@ -185,6 +271,10 @@ export default function DetailDrawer({ tab, onTabChange, venues, incidents, matc
                     <span style={{ fontSize: '0.7rem', color: '#94a3b8', marginLeft: 8 }}>Risk: {selectedVenue.riskLevel}</span>
                   </div>
                 </div>
+
+                {selectedVenue.hasCameraFeed && (
+                  <CameraFeedPanel cameraFeed={selectedVenue.cameraFeed} />
+                )}
 
                 {selectedMatches.length > 0 && (
                   <div style={{ borderTop: '1px solid #334155', paddingTop: '0.5rem' }}>
