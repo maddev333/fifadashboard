@@ -12,6 +12,17 @@ import DetailDrawer from '../components/DetailDrawer'
 /* ── Eastern Time helpers ───────────────────────────────── */
 
 const ET_TZ = 'America/New_York'
+const CAMERA_FEEDS = {
+  'new-york-new-jersey-stadium': {
+    id: 'nyc-traffic-cam-1',
+    title: 'New York Regional Traffic Camera',
+    label: 'New York camera feed',
+    location: 'New York / East Rutherford approach',
+    provider: 'NJ 511',
+    streamUrl: 'https://nj-511.wink.co/hls/public/30/WF01-6478-AAD0-D5C0-1E89_high/stream.m3u8?otp=776846918717&_HLS_msn=84023',
+    notes: 'Live HLS traffic camera for the New York metro area near the host venue.'
+  }
+}
 
 function getEtDateString(date = new Date()) {
   return date.toLocaleDateString('en-CA', { timeZone: ET_TZ })
@@ -69,7 +80,7 @@ function compareMatchDateTimes(a, b) {
   return getMatchDateTime(a) - getMatchDateTime(b)
 }
 
-/* ── Page ───────────────────────────────────────────────── */
+/* ── Page ────────────────────────────────────────────────── */
 
 export default function MapPage() {
   const { data: venues } = useData('venues')
@@ -112,6 +123,7 @@ export default function MapPage() {
         return dt && dt >= countdownNow
       }) || sorted[0] || null
       const nextMatchDateTime = getMatchDateTime(nextMatch)
+      const cameraFeed = CAMERA_FEEDS[venue.id] || null
 
       return {
         ...venue,
@@ -120,13 +132,15 @@ export default function MapPage() {
         hasMatch: venueMatches.length > 0,
         nextMatch,
         nextMatchDateTime,
+        cameraFeed,
+        hasCameraFeed: Boolean(cameraFeed),
         hostLabel: `${venue.city}, ${venue.country}`,
         venueLabel: venueMatches.length > 0
           ? `${venueMatches.length} World Cup matches`
           : 'Host venue'
       }
     })
-  ), [validVenues, matchesByVenue])
+  ), [validVenues, matchesByVenue, countdownNow])
 
   const featuredVenue = useMemo(() => {
     return hostVenues
