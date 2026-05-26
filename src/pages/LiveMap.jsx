@@ -4,7 +4,7 @@ import { hasValidLatLng, toCoordinatePair, getDistanceInMeters } from '../utils/
 
 const AZURE_MAPS_KEY = import.meta.env.VITE_AZURE_MAPS_KEY
 const FOCUSED_VENUE_ZOOM = 11
-const FIFA_HOST_REGION_CENTER = [-99.5, 37.5]
+const HOST_REGION_CENTER = [-99.5, 37.5]
 const DEFAULT_ALL_VENUES_ZOOM = 3
 const FOCUSED_WEATHER_RADIUS_METERS = 25000
 const WEATHER_OVERLAY_ID = 'weather-radar-overlay'
@@ -40,7 +40,7 @@ function focusMap(map, selectedVenue) {
     map.setCamera({ center: toCoordinatePair(selectedVenue), zoom: FOCUSED_VENUE_ZOOM, type: 'ease', duration: 1200 })
     return
   }
-  map.setCamera({ center: FIFA_HOST_REGION_CENTER, zoom: DEFAULT_ALL_VENUES_ZOOM, type: 'ease', duration: 1200 })
+  map.setCamera({ center: HOST_REGION_CENTER, zoom: DEFAULT_ALL_VENUES_ZOOM, type: 'ease', duration: 1200 })
 }
 
 function getWeatherTileTimestamp(date = new Date()) {
@@ -115,7 +115,7 @@ export default function LiveMap({
     }
 
     isDisposedRef.current = false
-    const initialCenter = hasValidLatLng(selectedVenue) ? toCoordinatePair(selectedVenue) : FIFA_HOST_REGION_CENTER
+    const initialCenter = hasValidLatLng(selectedVenue) ? toCoordinatePair(selectedVenue) : HOST_REGION_CENTER
 
     let map
     try {
@@ -155,7 +155,7 @@ export default function LiveMap({
 
       popupRef.current.setOptions({
         content: `<div style="padding:10px;font-family:sans-serif;min-width:240px">
-          <strong>${properties.title || 'FIFA venue'}</strong><br/>
+          <strong>${properties.title || 'Host venue'}</strong><br/>
           <span>${properties.subtitle || ''}</span><br/>
           <span style="color:#475569">${properties.detail || ''}</span><br/>
           ${properties.countdown ? `<span style="display:inline-block;margin-top:6px;color:#ea580c;font-weight:700">Countdown: ${properties.countdown}</span>` : ''}
@@ -312,7 +312,7 @@ export default function LiveMap({
           )}
           <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
-              <h3 style={{ color: '#e2e8f0', fontSize: '1rem' }}>FIFA Venues ({venues.length})</h3>
+              <h3 style={{ color: '#e2e8f0', fontSize: '1rem' }}>Host Venues ({venues.length})</h3>
               {venues.map(v => (
                 <div key={v.id} style={{ padding: '0.35rem 0', borderBottom: '1px solid #334155', color: '#e2e8f0', fontSize: '0.85rem' }}>
                   <strong>{v.name}</strong>
@@ -327,7 +327,7 @@ export default function LiveMap({
               <h3 style={{ color: '#e2e8f0', fontSize: '1rem' }}>Open Incidents</h3>
               <div style={{ color: '#e2e8f0', fontSize: '0.85rem' }}>{incidents.filter(i => i.status === 'open').length} active incidents</div>
               <h3 style={{ color: '#e2e8f0', fontSize: '1rem', marginTop: '1rem' }}>Matchday Venues</h3>
-              <div style={{ color: '#e2e8f0', fontSize: '0.85rem' }}>{todayMatches.length} matches on the selected FIFA schedule day</div>
+              <div style={{ color: '#e2e8f0', fontSize: '0.85rem' }}>{todayMatches.length} matches on the selected schedule day</div>
               <h3 style={{ color: '#e2e8f0', fontSize: '1rem', marginTop: '1rem' }}>Weather Signals</h3>
               <div style={{ color: '#e2e8f0', fontSize: '0.85rem' }}>{visibleWeatherSignals.length} venue weather markers</div>
             </div>

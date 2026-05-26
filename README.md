@@ -1,4 +1,4 @@
-# FIFA World Cup Operations Website
+# World Cup Operations Website
 
 > Adapted from the original specification for **GitHub Pages** deployment.
 
@@ -153,7 +153,7 @@ The `base` path in Vite doesn't match the GitHub Pages URL. Example:
 
 All operational data lives in `/public/data/*.json`. Edit these files and push — they will deploy with the next build.
 
-The `venues.json` file now includes the full FIFA 2026 host venue set used by the Live Map page.
+The `venues.json` file now includes the full 2026 host venue set used by the Live Map page.
 
 If you want to move to a real backend later, replace the `useData` and `useAlerts` hooks with authenticated API calls.
 

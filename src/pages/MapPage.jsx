@@ -104,7 +104,7 @@ export default function MapPage() {
   }, [matches])
 
   /* Stable venue metadata – computed once when data loads */
-  const fifaVenues = useMemo(() => (
+  const hostVenues = useMemo(() => (
     validVenues.map(venue => {
       const venueMatches = matchesByVenue[venue.id] || []
       const sorted = [...venueMatches].sort(compareMatchDateTimes)
@@ -123,17 +123,17 @@ export default function MapPage() {
         nextMatchDateTime,
         hostLabel: `${venue.city}, ${venue.country}`,
         venueLabel: venueMatches.length > 0
-          ? `${venueMatches.length} FIFA matches`
-          : 'FIFA venue'
+          ? `${venueMatches.length} World Cup matches`
+          : 'Host venue'
       }
     })
   ), [validVenues, matchesByVenue]) // <-- intentionally stable; no countdownNow
 
   const featuredVenue = useMemo(() => {
-    return fifaVenues
+    return hostVenues
       .filter(v => v.nextMatchDateTime)
-      .sort((a, b) => a.nextMatchDateTime - b.nextMatchDateTime)[0] || fifaVenues[0] || null
-  }, [fifaVenues])
+      .sort((a, b) => a.nextMatchDateTime - b.nextMatchDateTime)[0] || hostVenues[0] || null
+  }, [hostVenues])
 
   /* Live countdown string – changes every second but everything else is stable */
   const featuredCountdown = useMemo(() => {
@@ -144,7 +144,7 @@ export default function MapPage() {
   const [selectedVenueId, setSelectedVenueId] = useState(null)
   const [drawerTab, setDrawerTab] = useState(null)
 
-  const { weatherSignals, weatherMode, weatherStatus } = useVenueWeather(fifaVenues)
+  const { weatherSignals, weatherMode, weatherStatus } = useVenueWeather(hostVenues)
 
   const handleVenueClick = useCallback((venueId) => {
     setSelectedVenueId(venueId)
@@ -169,26 +169,26 @@ export default function MapPage() {
 
   /* Compute per-venue countdown for popups/livemap */
   const venuesWithCountdown = useMemo(() => {
-    return fifaVenues.map(v => {
+    return hostVenues.map(v => {
       const parts = getTimeRemainingParts(v.nextMatchDateTime, countdownNow)
       return {
         ...v,
         nextMatchCountdown: v.nextMatch ? formatCountdown(parts) : 'No upcoming match'
       }
     })
-  }, [fifaVenues, countdownNow])
+  }, [hostVenues, countdownNow])
 
   /* Memoize stats so KpiOverlay doesn't get a new array every second */
   const kpiStats = useMemo(() => [
     { label: 'Tournament Matches', value: totalHostedMatches, color: '#38bdf8' },
     { label: 'Next Match Countdown', value: featuredCountdown, color: '#fb923c' },
     { label: 'Matches Today', value: todayMatches.length, color: '#22c55e' },
-    { label: 'Host Venues', value: fifaVenues.length, color: '#facc15' },
+    { label: 'Host Venues', value: hostVenues.length, color: '#facc15' },
     { label: 'Open Incidents', value: openIncidents, color: '#ef4444' },
     { label: 'Critical Alerts', value: criticalAlerts, color: '#f59e0b' },
     { label: 'Open Shifts', value: openShifts, color: '#a855f7' },
     { label: 'Active Venues Today', value: activeVenues, color: '#14b8a6' },
-  ], [totalHostedMatches, featuredCountdown, todayMatches.length, fifaVenues.length,
+  ], [totalHostedMatches, featuredCountdown, todayMatches.length, hostVenues.length,
       openIncidents, criticalAlerts, openShifts, activeVenues])
 
   return (
@@ -222,7 +222,7 @@ export default function MapPage() {
         background: 'linear-gradient(to bottom, rgba(15,23,42,0.8), transparent)'
       }}>
         <div style={{ pointerEvents: 'auto', display: 'flex', flexDirection: 'column', gap: '0.1rem', color: 'white', textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
-          <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>⚽ FIFA World Cup 2026 Venue Map</div>
+          <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>⚽ World Cup 2026 Venue Map</div>
           <div style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>
             {featuredVenue?.nextMatch
               ? `Next: ${featuredVenue.name} • ${featuredVenue.nextMatch.homeTeam} vs ${featuredVenue.nextMatch.awayTeam} on ${featuredVenue.nextMatch.date} ET • ${featuredCountdown}`
@@ -249,7 +249,7 @@ export default function MapPage() {
       <DetailDrawer
         tab={drawerTab}
         onTabChange={setDrawerTab}
-        venues={fifaVenues}          /* stable reference – DetailDrawer won't thrash */
+        venues={hostVenues}
         incidents={incidents}
         matches={matches}
         staffing={staffing}

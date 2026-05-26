@@ -1,4 +1,4 @@
-# FIFA World Cup Operations Website Specification
+# World Cup Operations Website Specification
 
 ## 1. Recommended solution
 
