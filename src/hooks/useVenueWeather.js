@@ -145,10 +145,16 @@ export function useVenueWeather(venues, refreshMs = 0) {
 
     loadWeather()
 
+    let timer = null
+    if (refreshMs > 0) {
+      timer = window.setInterval(loadWeather, refreshMs)
+    }
+
     return () => {
       active = false
       weatherAbortRef.current?.abort()
       weatherAbortRef.current = null
+      if (timer) window.clearInterval(timer)
     }
   }, [validVenues, fallbackWeatherSignals, refreshMs])
 
