@@ -34,6 +34,16 @@ function getEtNow() {
   )
 }
 
+function formatEtTime(date = getEtNow()) {
+  return date.toLocaleTimeString('en-US', {
+    timeZone: ET_TZ,
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  })
+}
+
 function parseEtDateTime(dateStr, timeStr) {
   if (!dateStr) return null
   const raw = (timeStr || '00:00').trim()
@@ -83,9 +93,10 @@ function compareMatchDateTimes(a, b) {
 /* ── Page ────────────────────────────────────────────────── */
 
 export default function MapPage() {
-  const { data: venues } = useData('venues')
-  const { data: incidents } = useData('incidents')
-  const { data: matches } = useData('matches')
+  const [refreshSeconds, setRefreshSeconds] = useState(15)
+  const { data: venues } = useData('venues', refreshSeconds * 1000)
+  const { data: incidents } = useData('incidents', refreshSeconds * 1000)
+  const { data: matches } = useData('matches', refreshSeconds * 1000)
   const { alerts } = useAlerts()
 
   const [layers, setLayers] = useState({
@@ -102,6 +113,8 @@ export default function MapPage() {
     const timer = window.setInterval(() => setCountdownNow(getEtNow()), 1000)
     return () => window.clearInterval(timer)
   }, [])
+
+  const currentTimeLabel = useMemo(() => formatEtTime(countdownNow), [countdownNow])
 
   const validVenues = useMemo(() => venues.filter(hasValidLatLng), [venues])
   const validIncidents = useMemo(() => incidents.filter(hasValidLatLng), [incidents])
@@ -255,6 +268,9 @@ export default function MapPage() {
         onChange={setLayers}
         weatherMode={weatherMode}
         weatherStatus={weatherStatus}
+        refreshSeconds={refreshSeconds}
+        onRefreshSecondsChange={setRefreshSeconds}
+        currentTimeLabel={currentTimeLabel}
       />
 
       <DetailDrawer
