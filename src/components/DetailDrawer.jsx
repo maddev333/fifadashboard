@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useMemo, useRef, useEffect, useState } from 'react'
+import Hls from 'hls.js'
 
 const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 }
 
@@ -39,6 +40,43 @@ function useIntelligenceFeed(alerts, incidents, weatherSignals) {
 }
 
 function CameraFeedPanel({ cameraFeed }) {
+  const videoRef = useRef(null)
+  const [videoError, setVideoError] = useState(false)
+
+  useEffect(() => {
+    if (!cameraFeed?.streamUrl || !videoRef.current) return
+    setVideoError(false)
+
+    const video = videoRef.current
+    let hls = null
+
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = cameraFeed.streamUrl
+    } else if (Hls.isSupported()) {
+      hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+      })
+      hls.loadSource(cameraFeed.streamUrl)
+      hls.attachMedia(video)
+      hls.on(Hls.Events.ERROR, (_event, data) => {
+        if (data.fatal) {
+          setVideoError(true)
+          hls.destroy()
+        }
+      })
+    } else {
+      setVideoError(true)
+    }
+
+    return () => {
+      if (hls) hls.destroy()
+      video.pause()
+      video.removeAttribute('src')
+      video.load()
+    }
+  }, [cameraFeed?.streamUrl])
+
   if (!cameraFeed) return null
 
   return (
@@ -52,21 +90,25 @@ function CameraFeedPanel({ cameraFeed }) {
           </div>
         </div>
         <div style={{ padding: '0.75rem' }}>
-          <video
-            controls
-            autoPlay
-            muted
-            playsInline
-            style={{ width: '100%', borderRadius: 6, background: '#000' }}
-            src={cameraFeed.streamUrl}
-          >
-            Your browser does not support inline video playback for this stream.
-          </video>
+          {videoError ? (
+            <div style={{ padding: '1.5rem', textAlign: 'center', color: '#ef4444', fontSize: '0.85rem' }}>
+              Camera feed unavailable. The stream may be offline or unsupported on this browser.
+            </div>
+          ) : (
+            <video
+              ref={videoRef}
+              controls
+              autoPlay
+              muted
+              playsInline
+              style={{ width: '100%', borderRadius: 6, background: '#000' }}
+            />
+          )}
           <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 8 }}>{cameraFeed.notes}</div>
           <a
             href={cameraFeed.streamUrl}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             style={{ display: 'inline-block', marginTop: 8, color: '#38bdf8', fontSize: '0.78rem', textDecoration: 'none', fontWeight: 600 }}
           >
             Open stream directly →
