@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { hasValidLatLng } from '../utils/geo'
 
 const AZURE_MAPS_KEY = import.meta.env.VITE_AZURE_MAPS_KEY
-const WEATHER_REFRESH_MS = 10 * 60 * 1000
 
 export function normalizeCondition(iconCode = '') {
   const code = iconCode.toString().toLowerCase()
@@ -82,14 +81,13 @@ async function fetchVenueWeather(venue, signal) {
   }
 }
 
-export function useVenueWeather(venues) {
+export function useVenueWeather(venues, refreshMs = 0) {
   const validVenues = useMemo(() => venues.filter(hasValidLatLng), [venues])
   const fallbackWeatherSignals = useMemo(() => buildFallbackWeatherSignals(validVenues), [validVenues])
   const [weatherSignals, setWeatherSignals] = useState([])
   const [weatherMode, setWeatherMode] = useState('loading')
   const [weatherStatus, setWeatherStatus] = useState('Loading live venue weather…')
   const weatherAbortRef = useRef(null)
-  const weatherRefreshRef = useRef(null)
 
   useEffect(() => {
     setWeatherSignals(fallbackWeatherSignals)
@@ -146,18 +144,13 @@ export function useVenueWeather(venues) {
     }
 
     loadWeather()
-    weatherRefreshRef.current = window.setInterval(loadWeather, WEATHER_REFRESH_MS)
 
     return () => {
       active = false
       weatherAbortRef.current?.abort()
       weatherAbortRef.current = null
-      if (weatherRefreshRef.current) {
-        window.clearInterval(weatherRefreshRef.current)
-        weatherRefreshRef.current = null
-      }
     }
-  }, [validVenues, fallbackWeatherSignals])
+  }, [validVenues, fallbackWeatherSignals, refreshMs])
 
   return {
     weatherSignals,

@@ -94,9 +94,10 @@ function compareMatchDateTimes(a, b) {
 
 export default function MapPage() {
   const [refreshSeconds, setRefreshSeconds] = useState(15)
-  const { data: venues } = useData('venues', refreshSeconds * 1000)
-  const { data: incidents } = useData('incidents', refreshSeconds * 1000)
-  const { data: matches } = useData('matches', refreshSeconds * 1000)
+  const refreshMs = refreshSeconds * 1000
+  const { data: venues } = useData('venues', refreshMs)
+  const { data: incidents } = useData('incidents', refreshMs)
+  const { data: matches } = useData('matches', refreshMs)
   const { alerts } = useAlerts()
 
   const [layers, setLayers] = useState({
@@ -170,7 +171,7 @@ export default function MapPage() {
   const [selectedVenueId, setSelectedVenueId] = useState(null)
   const [drawerTab, setDrawerTab] = useState(null)
 
-  const { weatherSignals, weatherMode, weatherStatus } = useVenueWeather(validVenues)
+  const { weatherSignals, weatherMode, weatherStatus } = useVenueWeather(validVenues, refreshMs)
 
   const handleVenueClick = useCallback((venueId) => {
     setSelectedVenueId(venueId)
