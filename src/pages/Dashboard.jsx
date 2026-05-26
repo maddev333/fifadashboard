@@ -40,7 +40,6 @@ export default function Dashboard() {
   const { data: venues } = useData('venues')
   const { data: matches } = useData('matches')
   const { data: incidents } = useData('incidents')
-  const { data: staffing } = useData('staffing')
   const { alerts } = useAlerts()
 
   const selectedDate = useMemo(() => {
@@ -55,7 +54,6 @@ export default function Dashboard() {
   const todayMatches = selectedDate ? matches.filter(m => m.date === selectedDate) : []
   const activeVenues = [...new Set(todayMatches.map(m => m.venueId))].length
   const openIncidents = incidents.filter(i => i.status === 'open').length
-  const openShifts = staffing.filter(s => s.status === 'open').length
   const weatherWarnings = alerts.filter(a => a.severity === 'critical').length
   const getVenueLink = (venueId) => ({
     pathname: '/map',
@@ -76,7 +74,6 @@ export default function Dashboard() {
         <KpiCard title="Active Venues" value={activeVenues} color="#22c55e" />
         <KpiCard title="Open Incidents" value={openIncidents} color="#ef4444" />
         <KpiCard title="Critical Alerts" value={weatherWarnings} color="#f59e0b" />
-        <KpiCard title="Open Shifts" value={openShifts} color="#a855f7" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>

@@ -9,7 +9,7 @@ import KpiOverlay from '../components/KpiOverlay'
 import LayerPanel from '../components/LayerPanel'
 import DetailDrawer from '../components/DetailDrawer'
 
-/* ── Eastern Time helpers ─────────────────────────────────────────────── */
+/* ── Eastern Time helpers ───────────────────────────────── */
 
 const ET_TZ = 'America/New_York'
 
@@ -69,13 +69,12 @@ function compareMatchDateTimes(a, b) {
   return getMatchDateTime(a) - getMatchDateTime(b)
 }
 
-/* ── Page ─────────────────────────────────────────────────────────────── */
+/* ── Page ───────────────────────────────────────────────── */
 
 export default function MapPage() {
   const { data: venues } = useData('venues')
   const { data: incidents } = useData('incidents')
   const { data: matches } = useData('matches')
-  const { data: staffing } = useData('staffing')
   const { alerts } = useAlerts()
 
   const [layers, setLayers] = useState({
@@ -127,7 +126,7 @@ export default function MapPage() {
           : 'Host venue'
       }
     })
-  ), [validVenues, matchesByVenue]) // <-- intentionally stable; no countdownNow
+  ), [validVenues, matchesByVenue])
 
   const featuredVenue = useMemo(() => {
     return hostVenues
@@ -163,7 +162,6 @@ export default function MapPage() {
   )
   const activeVenues = [...new Set(todayMatches.map(m => m.venueId))].length
   const openIncidents = incidents.filter(i => i.status === 'open').length
-  const openShifts = staffing.filter(s => s.status === 'open').length
   const criticalAlerts = alerts.filter(a => a.severity === 'critical').length
   const totalHostedMatches = matches.length
 
@@ -186,10 +184,9 @@ export default function MapPage() {
     { label: 'Host Venues', value: hostVenues.length, color: '#facc15' },
     { label: 'Open Incidents', value: openIncidents, color: '#ef4444' },
     { label: 'Critical Alerts', value: criticalAlerts, color: '#f59e0b' },
-    { label: 'Open Shifts', value: openShifts, color: '#a855f7' },
     { label: 'Active Venues Today', value: activeVenues, color: '#14b8a6' },
   ], [totalHostedMatches, featuredCountdown, todayMatches.length, hostVenues.length,
-      openIncidents, criticalAlerts, openShifts, activeVenues])
+      openIncidents, criticalAlerts, activeVenues])
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#0f172a', overflow: 'hidden' }}>
@@ -252,7 +249,6 @@ export default function MapPage() {
         venues={hostVenues}
         incidents={incidents}
         matches={matches}
-        staffing={staffing}
         alerts={alerts}
         weatherSignals={weatherSignals}
         selectedVenueId={selectedVenueId}

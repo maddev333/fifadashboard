@@ -5,7 +5,6 @@ const links = [
   { to: '/map', label: 'Live Map' },
   { to: '/matches', label: 'Match Ops' },
   { to: '/feed', label: 'Intelligence Feed' },
-  { to: '/staffing', label: 'Staffing' },
   { to: '/admin', label: 'Admin' },
 ]
 
