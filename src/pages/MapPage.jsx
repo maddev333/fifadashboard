@@ -19,7 +19,7 @@ const CAMERA_FEEDS = {
     label: 'Meadowlands traffic camera',
     location: 'East Rutherford, New Jersey',
     provider: 'NJ 511',
-    streamUrl: 'https://nj-511.wink.co/hls/public/30/WF01-6478-AAD0-D5C0-1E89_high/stream.m3u8',
+    streamUrl: 'https://wink.njta.com/204/public/hls/WF05-24B0-46EE-0875-23D7_nj.m3u8',
     notes: 'Live HLS traffic camera covering the approach to the New York New Jersey Stadium host venue.'
   }
 }
