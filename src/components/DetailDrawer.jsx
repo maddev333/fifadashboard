@@ -1,5 +1,4 @@
 import { useMemo, useRef, useEffect, useState } from 'react'
-import Hls from 'hls.js'
 
 const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 }
 
@@ -49,27 +48,33 @@ function CameraFeedPanel({ cameraFeed }) {
 
     const video = videoRef.current
     let hls = null
+    let cancelled = false
 
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = cameraFeed.streamUrl
-    } else if (Hls.isSupported()) {
-      hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: true,
-      })
-      hls.loadSource(cameraFeed.streamUrl)
-      hls.attachMedia(video)
-      hls.on(Hls.Events.ERROR, (_event, data) => {
-        if (data.fatal) {
-          setVideoError(true)
-          hls.destroy()
-        }
-      })
     } else {
-      setVideoError(true)
+      import('hls.js').then(({ default: Hls }) => {
+        if (cancelled || !videoRef.current) return
+        if (Hls.isSupported()) {
+          hls = new Hls({ enableWorker: true, lowLatencyMode: true })
+          hls.loadSource(cameraFeed.streamUrl)
+          hls.attachMedia(video)
+          hls.on(Hls.Events.ERROR, (_event, data) => {
+            if (data.fatal) {
+              setVideoError(true)
+              hls.destroy()
+            }
+          })
+        } else {
+          setVideoError(true)
+        }
+      }).catch(() => {
+        if (!cancelled) setVideoError(true)
+      })
     }
 
     return () => {
+      cancelled = true
       if (hls) hls.destroy()
       video.pause()
       video.removeAttribute('src')
