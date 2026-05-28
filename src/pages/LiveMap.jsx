@@ -32,6 +32,11 @@ function getVenueMarkerColor(venue, selectedVenueId, featuredVenueId) {
   return '#2563eb'
 }
 
+function getBaseCampMarkerColor(baseCamp, selectedBaseCampId) {
+  if (baseCamp.id === selectedBaseCampId) return '#22c55e'
+  return '#a855f7'
+}
+
 function getVisibleWeatherSignals(weatherSignals, selectedVenue) {
   if (!hasValidLatLng(selectedVenue)) return weatherSignals
   return weatherSignals.filter(signal => (
@@ -39,10 +44,10 @@ function getVisibleWeatherSignals(weatherSignals, selectedVenue) {
   ))
 }
 
-function focusMap(map, selectedVenue) {
+function focusMap(map, focalItem) {
   if (!map) return
-  if (hasValidLatLng(selectedVenue)) {
-    map.setCamera({ center: toCoordinatePair(selectedVenue), zoom: FOCUSED_VENUE_ZOOM, type: 'ease', duration: 1200 })
+  if (hasValidLatLng(focalItem)) {
+    map.setCamera({ center: toCoordinatePair(focalItem), zoom: FOCUSED_VENUE_ZOOM, type: 'ease', duration: 1200 })
     return
   }
   map.setCamera({ center: HOST_REGION_CENTER, zoom: DEFAULT_ALL_VENUES_ZOOM, type: 'ease', duration: 1200 })
@@ -87,14 +92,18 @@ function isWebGLSupported() {
 
 export default function LiveMap({
   venues = [],
+  baseCamps = [],
   incidents = [],
   weatherSignals = [],
   layers,
+  mapView = 'venues',
   selectedVenueId,
+  selectedBaseCampId,
   featuredVenueId,
   todayMatches = [],
   nextMatchCountdown,
   onVenueClick,
+  onBaseCampClick,
   onBackgroundClick
 }) {
   const mapContainer = useRef(null)
@@ -108,6 +117,8 @@ export default function LiveMap({
   const [mapInitError, setMapInitError] = useState(null)
 
   const selectedVenue = useMemo(() => venues.find(v => v.id === selectedVenueId) || null, [venues, selectedVenueId])
+  const selectedBaseCamp = useMemo(() => baseCamps.find(c => c.id === selectedBaseCampId) || null, [baseCamps, selectedBaseCampId])
+  const focusItem = mapView === 'base-camps' ? selectedBaseCamp : selectedVenue
   const visibleWeatherSignals = useMemo(() => getVisibleWeatherSignals(weatherSignals, selectedVenue), [weatherSignals, selectedVenue])
   const todayMatchVenueIds = useMemo(() => new Set(todayMatches.map(match => match.venueId)), [todayMatches])
 
@@ -120,14 +131,14 @@ export default function LiveMap({
     }
 
     isDisposedRef.current = false
-    const initialCenter = hasValidLatLng(selectedVenue) ? toCoordinatePair(selectedVenue) : HOST_REGION_CENTER
+    const initialCenter = hasValidLatLng(focusItem) ? toCoordinatePair(focusItem) : HOST_REGION_CENTER
 
     let map
     try {
       map = new atlas.Map(mapContainer.current, {
         view: 'Auto',
         center: initialCenter,
-        zoom: hasValidLatLng(selectedVenue) ? FOCUSED_VENUE_ZOOM : DEFAULT_ALL_VENUES_ZOOM,
+        zoom: hasValidLatLng(focusItem) ? FOCUSED_VENUE_ZOOM : DEFAULT_ALL_VENUES_ZOOM,
         style: 'grayscale_dark',
         authOptions: {
           authType: atlas.AuthenticationType.subscriptionKey,
@@ -158,9 +169,13 @@ export default function LiveMap({
         onVenueClick?.(properties._venueId)
       }
 
+      if (properties.layerType === 'base-camp' && properties._baseCampId) {
+        onBaseCampClick?.(properties._baseCampId)
+      }
+
       popupRef.current.setOptions({
         content: `<div style="padding:10px;font-family:sans-serif;min-width:240px">
-          <strong>${properties.title || 'Host venue'}</strong><br/>
+          <strong>${properties.title || 'Host location'}</strong><br/>
           <span>${properties.subtitle || ''}</span><br/>
           <span style="color:#475569">${properties.detail || ''}</span><br/>
           ${properties.countdown ? `<span style="display:inline-block;margin-top:6px;color:#ea580c;font-weight:700">Countdown: ${properties.countdown}</span>` : ''}
@@ -197,6 +212,26 @@ export default function LiveMap({
         filter: ['==', ['get', 'layerType'], 'venue']
       }))
 
+      map.layers.add(new atlas.layer.BubbleLayer(source, 'base-camp-bubbles', {
+        radius: 10,
+        color: ['get', 'markerColor'],
+        strokeColor: '#ffffff',
+        strokeWidth: 2,
+        opacity: 0.9,
+        filter: ['==', ['get', 'layerType'], 'base-camp']
+      }))
+
+      map.layers.add(new atlas.layer.SymbolLayer(source, 'base-camp-points', {
+        textOptions: {
+          textField: ['get', 'shortLabel'],
+          offset: [0, 1.4],
+          color: '#e9d5ff',
+          size: 12,
+          allowOverlap: true
+        },
+        filter: ['==', ['get', 'layerType'], 'base-camp']
+      }))
+
       map.layers.add(new atlas.layer.BubbleLayer(source, 'incident-points', {
         radius: 8, color: ['get', 'color'], strokeColor: '#ffffff', strokeWidth: 2,
         filter: ['==', ['get', 'layerType'], 'incident']
@@ -209,7 +244,7 @@ export default function LiveMap({
 
       clickHandlerRef.current = handleMapClick
       map.events.add('click', clickHandlerRef.current)
-      focusMap(map, selectedVenue)
+      focusMap(map, focusItem)
       setMapReady(true)
     }
 
@@ -227,12 +262,12 @@ export default function LiveMap({
       mapRef.current = null
       map.dispose()
     }
-  }, [onVenueClick, onBackgroundClick]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [onVenueClick, onBaseCampClick, onBackgroundClick]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Focus camera when selected venue changes
+  // Focus camera when selected item changes
   useEffect(() => {
-    if (mapReady && mapRef.current) focusMap(mapRef.current, selectedVenue)
-  }, [mapReady, selectedVenue])
+    if (mapReady && mapRef.current) focusMap(mapRef.current, focusItem)
+  }, [mapReady, focusItem])
 
   // Toggle traffic
   useEffect(() => {
@@ -254,7 +289,7 @@ export default function LiveMap({
     if (!mapReady || !source) return
     source.clear()
 
-    if (layers.venues) {
+    if (layers.venues && mapView === 'venues') {
       source.add(venues.map(v => new atlas.data.Feature(
         new atlas.data.Point(toCoordinatePair(v)),
         {
@@ -273,7 +308,22 @@ export default function LiveMap({
       )))
     }
 
-    if (layers.incidents) {
+    if (layers.baseCamps && mapView === 'base-camps') {
+      source.add(baseCamps.map(camp => new atlas.data.Feature(
+        new atlas.data.Point(toCoordinatePair(camp)),
+        {
+          layerType: 'base-camp',
+          title: camp.name,
+          shortLabel: camp.city,
+          subtitle: `${camp.city}, ${camp.country}`,
+          detail: `${camp.association} • ${camp.trainingSite}`,
+          markerColor: getBaseCampMarkerColor(camp, selectedBaseCampId),
+          _baseCampId: camp.id
+        }
+      )))
+    }
+
+    if (layers.incidents && mapView === 'venues') {
       source.add(incidents.map(i => new atlas.data.Feature(
         new atlas.data.Point(toCoordinatePair(i)),
         {
@@ -286,7 +336,7 @@ export default function LiveMap({
       )))
     }
 
-    if (layers.weatherMarkers) {
+    if (layers.weatherMarkers && mapView === 'venues') {
       source.add(visibleWeatherSignals.map(signal => new atlas.data.Feature(
         new atlas.data.Point(toCoordinatePair(signal)),
         {
@@ -298,9 +348,10 @@ export default function LiveMap({
         }
       )))
     }
-  }, [mapReady, venues, incidents, layers.venues, layers.incidents, layers.weatherMarkers, visibleWeatherSignals, selectedVenueId, featuredVenueId, todayMatchVenueIds])
+  }, [mapReady, venues, baseCamps, incidents, layers.venues, layers.baseCamps, layers.incidents, layers.weatherMarkers, visibleWeatherSignals, selectedVenueId, selectedBaseCampId, featuredVenueId, todayMatchVenueIds, mapView])
 
   if (mapInitError) {
+    const fallbackItems = mapView === 'base-camps' ? baseCamps : venues
     return (
       <div className="map-fallback">
         <div className="card" style={{ maxWidth: 600, width: '100%' }}>
@@ -310,31 +361,41 @@ export default function LiveMap({
             Try enabling hardware acceleration, or use a different browser/device.
           </p>
           <p className="text-muted" style={{ fontSize: '0.875rem' }}>{mapInitError}</p>
-          {nextMatchCountdown && (
+          {nextMatchCountdown && mapView === 'venues' && (
             <p style={{ color: 'var(--color-orange-400)', fontSize: '0.95rem', fontWeight: 700 }}>
               Next match countdown: {nextMatchCountdown}
             </p>
           )}
           <div className="grid-2" style={{ marginTop: '1rem' }}>
             <div>
-              <h3 style={{ fontSize: '1rem' }}>Host Venues ({venues.length})</h3>
-              {venues.map(v => (
-                <div key={v.id} style={{ padding: '0.35rem 0', borderBottom: '1px solid var(--color-border)', fontSize: '0.85rem' }}>
-                  <strong>{v.name}</strong>
-                  <div className="text-muted" style={{ fontSize: '0.75rem' }}>{v.city}, {v.country} • {v.matchCount || 0} matches</div>
-                  {v.nextMatchCountdown && (
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-orange-400)' }}>Countdown: {v.nextMatchCountdown}</div>
-                  )}
+              <h3 style={{ fontSize: '1rem' }}>{mapView === 'base-camps' ? `Base Camps (${baseCamps.length})` : `Host Venues (${venues.length})`}</h3>
+              {fallbackItems.map(item => (
+                <div key={item.id} style={{ padding: '0.35rem 0', borderBottom: '1px solid var(--color-border)', fontSize: '0.85rem' }}>
+                  <strong>{item.name}</strong>
+                  <div className="text-muted" style={{ fontSize: '0.75rem' }}>{item.city}, {item.country}</div>
+                  {mapView === 'base-camps'
+                    ? <div style={{ fontSize: '0.75rem', color: 'var(--color-violet-300)' }}>{item.trainingSite}</div>
+                    : item.nextMatchCountdown && <div style={{ fontSize: '0.75rem', color: 'var(--color-orange-400)' }}>Countdown: {item.nextMatchCountdown}</div>}
                 </div>
               ))}
             </div>
             <div>
-              <h3 style={{ fontSize: '1rem' }}>Open Incidents</h3>
-              <div style={{ fontSize: '0.85rem' }}>{incidents.filter(i => i.status === 'open').length} active incidents</div>
-              <h3 style={{ fontSize: '1rem', marginTop: '1rem' }}>Matchday Venues</h3>
-              <div style={{ fontSize: '0.85rem' }}>{todayMatches.length} matches on the selected schedule day</div>
-              <h3 style={{ fontSize: '1rem', marginTop: '1rem' }}>Weather Signals</h3>
-              <div style={{ fontSize: '0.85rem' }}>{visibleWeatherSignals.length} venue weather markers</div>
+              {mapView === 'base-camps' ? (
+                <>
+                  <h3 style={{ fontSize: '1rem' }}>Base Camp Summary</h3>
+                  <div style={{ fontSize: '0.85rem' }}>{baseCamps.length} participating member associations</div>
+                  <div style={{ fontSize: '0.85rem' }}>{new Set(baseCamps.map(c => c.city)).size} cities represented</div>
+                </>
+              ) : (
+                <>
+                  <h3 style={{ fontSize: '1rem' }}>Open Incidents</h3>
+                  <div style={{ fontSize: '0.85rem' }}>{incidents.filter(i => i.status === 'open').length} active incidents</div>
+                  <h3 style={{ fontSize: '1rem', marginTop: '1rem' }}>Matchday Venues</h3>
+                  <div style={{ fontSize: '0.85rem' }}>{todayMatches.length} matches on the selected schedule day</div>
+                  <h3 style={{ fontSize: '1rem', marginTop: '1rem' }}>Weather Signals</h3>
+                  <div style={{ fontSize: '0.85rem' }}>{visibleWeatherSignals.length} venue weather markers</div>
+                </>
+              )}
             </div>
           </div>
         </div>

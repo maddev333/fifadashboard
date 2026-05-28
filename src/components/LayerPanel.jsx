@@ -1,17 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 /*
  * Layer legend colors: these are map rendering colors that match the
  * Azure Maps bubble layer colors. They are not CSS theme tokens.
  */
-const LAYERS = [
-  { key: 'venues', label: 'Venues', color: '#0ea5e9' },
-  { key: 'incidents', label: 'Incidents', color: '#ef4444' },
-  { key: 'traffic', label: 'Live Traffic', color: '#22c55e' },
-  { key: 'weatherRadar', label: 'Weather Radar', color: '#a855f7' },
-  { key: 'weatherMarkers', label: 'Weather Markers', color: '#f59e0b' },
-]
-
 const refreshOptions = [5, 10, 15, 30, 60]
 
 function useOpenState(initial = true) {
@@ -27,8 +19,27 @@ export default function LayerPanel({
   refreshSeconds,
   onRefreshSecondsChange,
   currentTimeLabel,
+  mapView = 'venues',
 }) {
   const [isOpen, onToggle] = useOpenState(true)
+
+  const visibleLayers = useMemo(() => {
+    if (mapView === 'base-camps') {
+      return [
+        { key: 'baseCamps', label: 'Base Camps', color: '#a855f7' },
+        { key: 'traffic', label: 'Live Traffic', color: '#22c55e' },
+        { key: 'weatherRadar', label: 'Weather Radar', color: '#a855f7' },
+      ]
+    }
+
+    return [
+      { key: 'venues', label: 'Venues', color: '#0ea5e9' },
+      { key: 'incidents', label: 'Incidents', color: '#ef4444' },
+      { key: 'traffic', label: 'Live Traffic', color: '#22c55e' },
+      { key: 'weatherRadar', label: 'Weather Radar', color: '#a855f7' },
+      { key: 'weatherMarkers', label: 'Weather Markers', color: '#f59e0b' },
+    ]
+  }, [mapView])
 
   return (
     <details
@@ -65,7 +76,7 @@ export default function LayerPanel({
 
       <div style={{ padding: '0 0.75rem 0.75rem' }}>
         <div style={{ display: 'grid', gap: '0.35rem' }}>
-          {LAYERS.map(l => {
+          {visibleLayers.map(l => {
             const active = !!layers[l.key]
             return (
               <label

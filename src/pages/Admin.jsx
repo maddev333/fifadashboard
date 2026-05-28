@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useAlerts, readCustomAlerts } from '../hooks/useAlerts'
+import { useData } from '../hooks/useData'
 
 const STORAGE_KEY = 'custom_alerts'
 
 export default function Admin() {
   const { alerts } = useAlerts()
+  const { data: baseCamps } = useData('base-camps')
   const [isAdmin, setIsAdmin] = useState(false)
   const [storedAlerts, setStoredAlerts] = useState([])
   const [form, setForm] = useState({ title: '', message: '', severity: 'medium', scope: 'venue', venueId: '' })
@@ -25,6 +27,8 @@ export default function Admin() {
     setStoredAlerts(updated)
     setForm({ title: '', message: '', severity: 'medium', scope: 'venue', venueId: '' })
   }
+
+  const baseCampCities = useMemo(() => new Set(baseCamps.map(camp => camp.city)).size, [baseCamps])
 
   if (!isAdmin) {
     return (
@@ -47,6 +51,51 @@ export default function Admin() {
       <div className="flex-between" style={{ marginBottom: '1rem' }}>
         <h1>Admin / Edit Mode</h1>
         <button onClick={() => setIsAdmin(false)} className="btn" type="button">Exit Admin</button>
+      </div>
+
+      <div className="grid-2" style={{ gap: '1rem', marginBottom: '1.5rem' }}>
+        <div className="card">
+          <div className="uppercase-label" style={{ marginBottom: '0.35rem' }}>Base Camp Coverage</div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 700 }}>{baseCamps.length}</div>
+          <div className="text-muted" style={{ fontSize: '0.85rem' }}>participating member associations loaded from workbook data</div>
+        </div>
+        <div className="card">
+          <div className="uppercase-label" style={{ marginBottom: '0.35rem' }}>Base Camp Cities</div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 700 }}>{baseCampCities}</div>
+          <div className="text-muted" style={{ fontSize: '0.85rem' }}>host cities represented in the base camp list</div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: '1.5rem' }}>
+        <div className="flex-between" style={{ marginBottom: '0.75rem', gap: '1rem' }}>
+          <div>
+            <h3 style={{ margin: 0 }}>Base Camp Locations</h3>
+            <div className="text-muted" style={{ fontSize: '0.85rem', marginTop: '0.2rem' }}>
+              Workbook-sourced team lodging and training assignments for World Cup operations planning.
+            </div>
+          </div>
+          <span className="tag">{baseCamps.length} entries</span>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Member Association</th>
+                <th>City</th>
+                <th>Training Site</th>
+              </tr>
+            </thead>
+            <tbody>
+              {baseCamps.map(camp => (
+                <tr key={`${camp.association}-${camp.trainingSite}`}>
+                  <td>{camp.association}</td>
+                  <td>{camp.city}</td>
+                  <td>{camp.trainingSite}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="card" style={{ marginBottom: '1.5rem' }}>

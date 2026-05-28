@@ -6,6 +6,7 @@ const TAB_CONFIG = [
   { key: 'feed', label: 'Feed' },
   { key: 'matches', label: 'Matches' },
   { key: 'venue', label: 'Venue' },
+  { key: 'base-camp', label: 'Base Camp' },
 ]
 
 function colorForSeverity(sev) {
@@ -126,9 +127,10 @@ function CameraFeedPanel({ cameraFeed }) {
   )
 }
 
-export default function DetailDrawer({ tab, onTabChange, venues, incidents, matches, alerts, weatherSignals, selectedVenueId }) {
+export default function DetailDrawer({ tab, onTabChange, venues, baseCamps = [], incidents, matches, alerts, weatherSignals, selectedVenueId, selectedBaseCampId }) {
   const feed = useIntelligenceFeed(alerts, incidents, weatherSignals)
   const selectedVenue = venues.find(v => v.id === selectedVenueId) || null
+  const selectedBaseCamp = baseCamps.find(c => c.id === selectedBaseCampId) || null
   const selectedMatches = matches.filter(m => m.venueId === selectedVenueId)
   const selectedIncidents = incidents.filter(i => i.venueId === selectedVenueId)
 
@@ -154,7 +156,7 @@ export default function DetailDrawer({ tab, onTabChange, venues, incidents, matc
       }}>
         {TAB_CONFIG.map(t => {
           const active = tab === t.key
-          const disabled = t.key === 'venue' && !selectedVenue
+          const disabled = (t.key === 'venue' && !selectedVenue) || (t.key === 'base-camp' && !selectedBaseCamp)
           return (
             <button
               key={t.key}
@@ -277,6 +279,26 @@ export default function DetailDrawer({ tab, onTabChange, venues, incidents, matc
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {tab === 'base-camp' && selectedBaseCamp && (
+              <div style={{ display: 'grid', gap: '0.6rem' }}>
+                <div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{selectedBaseCamp.association}</div>
+                  <div className="text-muted" style={{ fontSize: '0.8rem' }}>{selectedBaseCamp.city}, {selectedBaseCamp.state}, {selectedBaseCamp.country}</div>
+                  <div className="text-muted" style={{ fontSize: '0.8rem' }}>Training Site: {selectedBaseCamp.trainingSite}</div>
+                  <div style={{ marginTop: 4 }}>
+                    <span className="badge badge-caution">Base Camp</span>
+                  </div>
+                </div>
+
+                <div className="divider" style={{ paddingTop: '0.5rem' }}>
+                  <div className="uppercase-label" style={{ fontSize: '0.7rem', marginBottom: 4 }}>Operations Notes</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--color-text)' }}>
+                    Workbook-sourced training base assignment for tournament planning and team logistics coordination.
+                  </div>
+                </div>
               </div>
             )}
           </div>
