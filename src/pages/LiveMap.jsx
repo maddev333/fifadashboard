@@ -32,6 +32,8 @@ function getVenueMarkerColor(venue, selectedVenueId, featuredVenueId) {
   return '#2563eb'
 }
 
+const BASE_CAMP_COLOR = '#8b5cf6'
+
 function getVisibleWeatherSignals(weatherSignals, selectedVenue) {
   if (!hasValidLatLng(selectedVenue)) return weatherSignals
   return weatherSignals.filter(signal => (
@@ -88,6 +90,7 @@ function isWebGLSupported() {
 export default function LiveMap({
   venues = [],
   incidents = [],
+  baseCamps = [],
   weatherSignals = [],
   layers,
   selectedVenueId,
@@ -156,6 +159,8 @@ export default function LiveMap({
 
       if (properties.layerType === 'venue' && properties._venueId) {
         onVenueClick?.(properties._venueId)
+      } else if (properties.layerType === 'baseCamp') {
+        // Base camp popup only — no drawer navigation
       }
 
       popupRef.current.setOptions({
@@ -176,6 +181,26 @@ export default function LiveMap({
       const source = new atlas.source.DataSource()
       map.sources.add(source)
       dataSourceRef.current = source
+
+      map.layers.add(new atlas.layer.BubbleLayer(source, 'basecamp-bubbles', {
+        radius: 8,
+        color: BASE_CAMP_COLOR,
+        strokeColor: '#ffffff',
+        strokeWidth: 2,
+        opacity: 0.85,
+        filter: ['==', ['get', 'layerType'], 'baseCamp']
+      }))
+
+      map.layers.add(new atlas.layer.SymbolLayer(source, 'basecamp-points', {
+        textOptions: {
+          textField: ['get', 'shortLabel'],
+          offset: [0, 1.4],
+          color: '#e2e8f0',
+          size: 11,
+          allowOverlap: true
+        },
+        filter: ['==', ['get', 'layerType'], 'baseCamp']
+      }))
 
       map.layers.add(new atlas.layer.BubbleLayer(source, 'venue-bubbles', {
         radius: ['interpolate', ['linear'], ['get', 'matchCount'], 0, 10, 3, 16, 7, 22],
@@ -254,6 +279,19 @@ export default function LiveMap({
     if (!mapReady || !source) return
     source.clear()
 
+    if (layers.baseCamps) {
+      source.add(baseCamps.map(c => new atlas.data.Feature(
+        new atlas.data.Point(toCoordinatePair(c)),
+        {
+          layerType: 'baseCamp',
+          title: c.name,
+          shortLabel: c.city,
+          subtitle: `${c.city}, ${c.country}`,
+          detail: `${c.teams?.length || 0} team base${c.teams?.length !== 1 ? 's' : ''}${c.teams ? `: ${c.teams.join(', ')}` : ''}`,
+        }
+      )))
+    }
+
     if (layers.venues) {
       source.add(venues.map(v => new atlas.data.Feature(
         new atlas.data.Point(toCoordinatePair(v)),
@@ -298,7 +336,7 @@ export default function LiveMap({
         }
       )))
     }
-  }, [mapReady, venues, incidents, layers.venues, layers.incidents, layers.weatherMarkers, visibleWeatherSignals, selectedVenueId, featuredVenueId, todayMatchVenueIds])
+  }, [mapReady, venues, incidents, baseCamps, layers.venues, layers.baseCamps, layers.incidents, layers.weatherMarkers, visibleWeatherSignals, selectedVenueId, featuredVenueId, todayMatchVenueIds])
 
   if (mapInitError) {
     return (
@@ -329,6 +367,14 @@ export default function LiveMap({
               ))}
             </div>
             <div>
+              <h3 style={{ fontSize: '1rem' }}>Base Camps ({baseCamps.length})</h3>
+              {baseCamps.map(c => (
+                <div key={c.id} style={{ padding: '0.35rem 0', borderBottom: '1px solid var(--color-border)', fontSize: '0.85rem' }}>
+                  <strong>{c.name}</strong>
+                  <div className="text-muted" style={{ fontSize: '0.75rem' }}>{c.city}, {c.country}</div>
+                  <div className="text-muted" style={{ fontSize: '0.75rem', color: 'var(--color-purple-500)' }}>{c.teams?.join(', ')}</div>
+                </div>
+              ))}
               <h3 style={{ fontSize: '1rem' }}>Open Incidents</h3>
               <div style={{ fontSize: '0.85rem' }}>{incidents.filter(i => i.status === 'open').length} active incidents</div>
               <h3 style={{ fontSize: '1rem', marginTop: '1rem' }}>Matchday Venues</h3>

@@ -6,6 +6,7 @@ import { useState } from 'react'
  */
 const LAYERS = [
   { key: 'venues', label: 'Venues', color: '#0ea5e9' },
+  { key: 'baseCamps', label: 'Base Camps', color: '#8b5cf6' },
   { key: 'incidents', label: 'Incidents', color: '#ef4444' },
   { key: 'traffic', label: 'Live Traffic', color: '#22c55e' },
   { key: 'weatherRadar', label: 'Weather Radar', color: '#a855f7' },

@@ -108,10 +108,12 @@ export default function MapPage() {
   const { data: venues } = useData('venues', refreshMs)
   const { data: incidents } = useData('incidents', refreshMs)
   const { data: matches } = useData('matches', refreshMs)
+  const { data: baseCamps } = useData('basecamps', refreshMs)
   const { alerts } = useAlerts()
 
   const [layers, setLayers] = useState({
     venues: true,
+    baseCamps: true,
     incidents: true,
     traffic: false,
     weatherRadar: true,
@@ -220,10 +222,11 @@ export default function MapPage() {
     { label: 'Next Match Countdown', value: featuredCountdown, color: KPI_COLOR_ATTENTION },
     { label: 'Matches Today', value: todayMatches.length, color: KPI_COLOR_SUCCESS },
     { label: 'Host Venues', value: hostVenues.length, color: KPI_COLOR_CAUTION },
+    { label: 'Base Camps', value: baseCamps.length, color: 'var(--color-purple-500)' },
     { label: 'Open Incidents', value: openIncidents, color: KPI_COLOR_DANGER },
     { label: 'Critical Alerts', value: criticalAlerts, color: KPI_COLOR_WARNING },
     { label: 'Active Venues Today', value: activeVenues, color: KPI_COLOR_ACTIVE },
-  ], [totalHostedMatches, featuredCountdown, todayMatches.length, hostVenues.length,
+  ], [totalHostedMatches, featuredCountdown, todayMatches.length, hostVenues.length, baseCamps.length,
       openIncidents, criticalAlerts, activeVenues])
 
   return (
@@ -232,6 +235,7 @@ export default function MapPage() {
         <LiveMap
           venues={venuesWithCountdown}
           incidents={validIncidents}
+          baseCamps={baseCamps}
           weatherSignals={weatherSignals}
           layers={layers}
           selectedVenueId={selectedVenueId}
