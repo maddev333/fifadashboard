@@ -27,12 +27,7 @@ export default function KpiOverlay({ stats = [] }) {
           <div className="kpi-label">
             {s.label}
           </div>
-          <div style={{
-            fontSize: '1.25rem',
-            fontWeight: 700,
-            color: s.color,
-            lineHeight: 1.2
-          }}>
+          <div className="kpi-value" style={{ '--kpi-color': s.color }}>
             {s.value}
           </div>
         </div>

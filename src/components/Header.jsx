@@ -14,7 +14,7 @@ export default function Header() {
   return (
     <header style={{
       background: 'var(--surface-bg)',
-      color: 'white',
+      color: 'var(--color-text)',
       padding: '0.75rem 1rem',
       borderBottom: '1px solid var(--color-border)'
     }}>
@@ -34,7 +34,7 @@ export default function Header() {
               key={l.to}
               to={l.to}
               style={{
-                color: pathname === l.to ? 'var(--color-accent)' : 'var(--color-slate-300)',
+                color: pathname === l.to ? 'var(--color-accent)' : 'var(--color-text-secondary)',
                 textDecoration: 'none',
                 fontSize: '0.9rem',
                 fontWeight: pathname === l.to ? 600 : 400
