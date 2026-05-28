@@ -1,0 +1,242 @@
+[
+  {
+    "association": "Algeria",
+    "city": "Kansas City",
+    "trainingSite": "University of Kansas"
+  },
+  {
+    "association": "Argentina",
+    "city": "Kansas City",
+    "trainingSite": "Sporting KC Training Centre"
+  },
+  {
+    "association": "Australia",
+    "city": "San Francisco Bay Area",
+    "trainingSite": "Oakland Roots/Soul Training Facility"
+  },
+  {
+    "association": "Austria",
+    "city": "Goleta",
+    "trainingSite": "UC Santa Barbara - Harder Stadium"
+  },
+  {
+    "association": "Belgium",
+    "city": "Renton",
+    "trainingSite": "Seattle Sounders FC Performance Centre and Clubhouse"
+  },
+  {
+    "association": "Bosnia and Herzegovina",
+    "city": "Sandy",
+    "trainingSite": "RSL Stadium"
+  },
+  {
+    "association": "Brazil",
+    "city": "New York New Jersey",
+    "trainingSite": "Columbia Park Training Facility"
+  },
+  {
+    "association": "Cabo Verde",
+    "city": "Tampa",
+    "trainingSite": "Waters Sportsplex"
+  },
+  {
+    "association": "Canada",
+    "city": "Vancouver",
+    "trainingSite": "National Soccer Development Centre"
+  },
+  {
+    "association": "Colombia",
+    "city": "Guadalajara",
+    "trainingSite": "Academia Atlas FC"
+  },
+  {
+    "association": "Congo DR",
+    "city": "Houston",
+    "trainingSite": "Houston Training Centre"
+  },
+  {
+    "association": "Cote d’Ivoire",
+    "city": "Philadelphia",
+    "trainingSite": "Philadelphia Union"
+  },
+  {
+    "association": "Croatia",
+    "city": "Alexandria",
+    "trainingSite": "Episcopal High School"
+  },
+  {
+    "association": "Curaçao",
+    "city": "Boca Raton",
+    "trainingSite": "Florida Atlantic University"
+  },
+  {
+    "association": "Czechia",
+    "city": "Dallas",
+    "trainingSite": "Mansfield Multipurpose Stadium"
+  },
+  {
+    "association": "Ecuador",
+    "city": "Columbus",
+    "trainingSite": "Columbus Crew Performance Centre"
+  },
+  {
+    "association": "England",
+    "city": "Kansas City",
+    "trainingSite": "Swope Soccer Village"
+  },
+  {
+    "association": "Egypt",
+    "city": "Spokane",
+    "trainingSite": "Gonzaga University"
+  },
+  {
+    "association": "France",
+    "city": "Boston",
+    "trainingSite": "Bentley University"
+  },
+  {
+    "association": "Germany",
+    "city": "Winston-Salem",
+    "trainingSite": "Wake Forest University"
+  },
+  {
+    "association": "Ghana",
+    "city": "Boston",
+    "trainingSite": "Bryant University"
+  },
+  {
+    "association": "Haiti",
+    "city": "New York New Jersey",
+    "trainingSite": "Stockton University"
+  },
+  {
+    "association": "IR Iran",
+    "city": "Tijuana",
+    "trainingSite": "Centro Xoloitzcuintle"
+  },
+  {
+    "association": "Iraq",
+    "city": "Greenbrier County",
+    "trainingSite": "The Greenbrier Sports Performance Centre"
+  },
+  {
+    "association": "Japan",
+    "city": "Nashville",
+    "trainingSite": "Nashville SC"
+  },
+  {
+    "association": "Jordan",
+    "city": "Portland",
+    "trainingSite": "University of Portland"
+  },
+  {
+    "association": "Korea Republic",
+    "city": "Guadalajara",
+    "trainingSite": "Chivas Verde Valle"
+  },
+  {
+    "association": "Mexico",
+    "city": "Mexico City",
+    "trainingSite": "Centro de Alto Rendimiento (CAR)"
+  },
+  {
+    "association": "Morocco",
+    "city": "New York New Jersey",
+    "trainingSite": "The Pingry School"
+  },
+  {
+    "association": "Netherlands",
+    "city": "Kansas City",
+    "trainingSite": "KC Current Training Facility"
+  },
+  {
+    "association": "New Zealand",
+    "city": "San Diego",
+    "trainingSite": "University of San Diego - Torero Stadium"
+  },
+  {
+    "association": "Norway",
+    "city": "Greensboro",
+    "trainingSite": "UNC Greensboro"
+  },
+  {
+    "association": "Panama",
+    "city": "New Tecumseth",
+    "trainingSite": "Nottawasaga Training Site"
+  },
+  {
+    "association": "Paraguay",
+    "city": "San Francisco Bay Area",
+    "trainingSite": "Spartan Soccer Complex"
+  },
+  {
+    "association": "Portugal",
+    "city": "Palm Beach Gardens",
+    "trainingSite": "Gardens North County District Park"
+  },
+  {
+    "association": "Qatar",
+    "city": "Santa Barbara",
+    "trainingSite": "Westmont College"
+  },
+  {
+    "association": "Saudi Arabia",
+    "city": "Austin",
+    "trainingSite": "Austin FC Stadium"
+  },
+  {
+    "association": "Scotland",
+    "city": "Charlotte",
+    "trainingSite": "Charlotte FC"
+  },
+  {
+    "association": "Senegal",
+    "city": "New York New Jersey",
+    "trainingSite": "Rutgers University"
+  },
+  {
+    "association": "South Africa",
+    "city": "Pachuca",
+    "trainingSite": "CF Pachuca - Universidad Del Futbol"
+  },
+  {
+    "association": "Spain",
+    "city": "Chattanooga",
+    "trainingSite": "Baylor School"
+  },
+  {
+    "association": "Sweden",
+    "city": "Dallas",
+    "trainingSite": "FC Dallas Stadium"
+  },
+  {
+    "association": "Switzerland",
+    "city": "San Diego",
+    "trainingSite": "SDJA"
+  },
+  {
+    "association": "Tunisia",
+    "city": "Monterrey",
+    "trainingSite": "Rayados Training Centre"
+  },
+  {
+    "association": "Türkiye",
+    "city": "Mesa",
+    "trainingSite": "Arizona Athletic Grounds"
+  },
+  {
+    "association": "United States",
+    "city": "Irvine",
+    "trainingSite": "Great Park Sports Complex"
+  },
+  {
+    "association": "Uruguay",
+    "city": "Cancun",
+    "trainingSite": "Mayakoba Training Centre Cancun"
+  },
+  {
+    "association": "Uzbekistan",
+    "city": "Atlanta",
+    "trainingSite": "Atlanta United Training Centre"
+  }
+]
