@@ -45,3 +45,4 @@ coverage/
 # Agent tools
 .agents/
 .agents
+skills-lock.json

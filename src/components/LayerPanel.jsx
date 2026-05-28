@@ -22,7 +22,6 @@ export default function LayerPanel({
   mapView = 'venues',
 }) {
   const [isOpen, onToggle] = useOpenState(true)
-
   const visibleLayers = useMemo(() => {
     if (mapView === 'base-camps') {
       return [
