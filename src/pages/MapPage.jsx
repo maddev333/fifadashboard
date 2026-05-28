@@ -90,6 +90,16 @@ function compareMatchDateTimes(a, b) {
   return getMatchDateTime(a) - getMatchDateTime(b)
 }
 
+/* ── Severity color tokens for KPIs ─────────────────────── */
+
+const KPI_COLOR_INFO     = 'var(--color-accent)'
+const KPI_COLOR_SUCCESS  = 'var(--color-success)'
+const KPI_COLOR_WARNING  = 'var(--color-warning)'
+const KPI_COLOR_DANGER   = 'var(--color-danger)'
+const KPI_COLOR_ATTENTION = 'var(--color-orange-400)'
+const KPI_COLOR_CAUTION  = 'var(--color-yellow-400)'
+const KPI_COLOR_ACTIVE   = 'var(--color-teal-500)'
+
 /* ── Page ────────────────────────────────────────────────── */
 
 export default function MapPage() {
@@ -206,19 +216,19 @@ export default function MapPage() {
 
   /* Memoize stats so KpiOverlay doesn't get a new array every second */
   const kpiStats = useMemo(() => [
-    { label: 'Tournament Matches', value: totalHostedMatches, color: '#38bdf8' },
-    { label: 'Next Match Countdown', value: featuredCountdown, color: '#fb923c' },
-    { label: 'Matches Today', value: todayMatches.length, color: '#22c55e' },
-    { label: 'Host Venues', value: hostVenues.length, color: '#facc15' },
-    { label: 'Open Incidents', value: openIncidents, color: '#ef4444' },
-    { label: 'Critical Alerts', value: criticalAlerts, color: '#f59e0b' },
-    { label: 'Active Venues Today', value: activeVenues, color: '#14b8a6' },
+    { label: 'Tournament Matches', value: totalHostedMatches, color: KPI_COLOR_INFO },
+    { label: 'Next Match Countdown', value: featuredCountdown, color: KPI_COLOR_ATTENTION },
+    { label: 'Matches Today', value: todayMatches.length, color: KPI_COLOR_SUCCESS },
+    { label: 'Host Venues', value: hostVenues.length, color: KPI_COLOR_CAUTION },
+    { label: 'Open Incidents', value: openIncidents, color: KPI_COLOR_DANGER },
+    { label: 'Critical Alerts', value: criticalAlerts, color: KPI_COLOR_WARNING },
+    { label: 'Active Venues Today', value: activeVenues, color: KPI_COLOR_ACTIVE },
   ], [totalHostedMatches, featuredCountdown, todayMatches.length, hostVenues.length,
       openIncidents, criticalAlerts, activeVenues])
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#0f172a', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', inset: 0 }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'var(--surface-bg)', overflow: 'hidden' }}>
+      <main aria-label="Live venue map" style={{ position: 'absolute', inset: 0 }}>
         <LiveMap
           venues={venuesWithCountdown}
           incidents={validIncidents}
@@ -231,48 +241,35 @@ export default function MapPage() {
           onVenueClick={handleVenueClick}
           onBackgroundClick={handleBackgroundClick}
         />
-      </div>
+      </main>
 
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        padding: '0.75rem 1rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        pointerEvents: 'none',
-        zIndex: 10,
-        background: 'linear-gradient(to bottom, rgba(15,23,42,0.8), transparent)'
-      }}>
-        <div style={{ pointerEvents: 'auto', display: 'flex', flexDirection: 'column', gap: '0.1rem', color: 'white', textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+      <nav aria-label="Map header" className="map-overlay">
+        <div className="map-overlay-title">
           <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>⚽ World Cup 2026 Venue Map</div>
-          <div style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>
+          <div className="map-overlay-subtitle">
             {featuredVenue?.nextMatch
               ? `Next: ${featuredVenue.name} • ${featuredVenue.nextMatch.homeTeam} vs ${featuredVenue.nextMatch.awayTeam} on ${featuredVenue.nextMatch.date} ET • ${featuredCountdown}`
               : 'Viewing tournament host venues across the United States, Mexico, and Canada'}
           </div>
         </div>
-        <Link
-          to="/admin"
-          style={{ pointerEvents: 'auto', color: '#94a3b8', fontSize: '0.85rem', textDecoration: 'none', fontWeight: 500 }}
-        >
+        <Link to="/admin" className="map-overlay-link">
           Admin →
         </Link>
-      </div>
+      </nav>
 
       <KpiOverlay stats={kpiStats} />
 
-      <LayerPanel
-        layers={layers}
-        onChange={setLayers}
-        weatherMode={weatherMode}
-        weatherStatus={weatherStatus}
-        refreshSeconds={refreshSeconds}
-        onRefreshSecondsChange={setRefreshSeconds}
-        currentTimeLabel={currentTimeLabel}
-      />
+      <aside aria-label="Map layers and refresh controls" style={{ position: 'relative' }}>
+        <LayerPanel
+          layers={layers}
+          onChange={setLayers}
+          weatherMode={weatherMode}
+          weatherStatus={weatherStatus}
+          refreshSeconds={refreshSeconds}
+          onRefreshSecondsChange={setRefreshSeconds}
+          currentTimeLabel={currentTimeLabel}
+        />
+      </aside>
 
       <DetailDrawer
         tab={drawerTab}

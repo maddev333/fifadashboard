@@ -17,21 +17,17 @@ export class MapErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{
-          background: '#1e293b',
-          borderRadius: 8,
-          padding: '1.5rem',
-          border: '1px solid #334155',
-          color: '#e2e8f0',
+        <div className="card" style={{
+          color: 'var(--color-text)',
           maxWidth: 1200,
           margin: '0 auto'
         }}>
-          <h2 style={{ marginTop: 0, color: '#f87171' }}>Map Unavailable</h2>
-          <p style={{ color: '#cbd5e1' }}>
+          <h2 style={{ marginTop: 0, color: 'var(--color-red-400)' }}>Map Unavailable</h2>
+          <p style={{ color: 'var(--color-slate-300)' }}>
             The interactive map could not be loaded. This usually happens when WebGL is disabled
             in your browser (e.g., hardware acceleration is turned off, or you're in a sandboxed environment).
           </p>
-          <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
+          <p className="text-muted" style={{ fontSize: '0.875rem' }}>
             Error: {this.state.error?.message || 'Unknown map error'}
           </p>
           {this.props.fallback || null}

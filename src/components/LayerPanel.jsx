@@ -1,3 +1,9 @@
+import { useState } from 'react'
+
+/*
+ * Layer legend colors: these are map rendering colors that match the
+ * Azure Maps bubble layer colors. They are not CSS theme tokens.
+ */
 const LAYERS = [
   { key: 'venues', label: 'Venues', color: '#0ea5e9' },
   { key: 'incidents', label: 'Incidents', color: '#ef4444' },
@@ -5,8 +11,6 @@ const LAYERS = [
   { key: 'weatherRadar', label: 'Weather Radar', color: '#a855f7' },
   { key: 'weatherMarkers', label: 'Weather Markers', color: '#f59e0b' },
 ]
-
-import { useState } from 'react'
 
 const refreshOptions = [5, 10, 15, 30, 60]
 
@@ -30,17 +34,14 @@ export default function LayerPanel({
     <details
       open={isOpen}
       onToggle={onToggle}
+      className="panel-glass"
       style={{
         position: 'absolute',
         top: 56,
         right: 16,
         zIndex: 10,
         width: 240,
-        background: 'rgba(15, 23, 42, 0.92)',
-        backdropFilter: 'blur(6px)',
-        border: '1px solid #334155',
-        borderRadius: 8,
-        color: '#e2e8f0',
+        color: 'var(--color-text)',
         overflow: 'hidden'
       }}
     >
@@ -51,7 +52,7 @@ export default function LayerPanel({
         fontSize: '0.75rem',
         fontWeight: 700,
         textTransform: 'uppercase',
-        color: '#94a3b8',
+        color: 'var(--color-text-muted)',
         letterSpacing: '0.04em',
         userSelect: 'none',
         display: 'flex',
@@ -59,62 +60,58 @@ export default function LayerPanel({
         justifyContent: 'space-between'
       }}>
         <span>Layers & Refresh</span>
-        <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Toggle</span>
+        <span className="text-muted" style={{ fontSize: '0.7rem' }}>Toggle</span>
       </summary>
 
       <div style={{ padding: '0 0.75rem 0.75rem' }}>
         <div style={{ display: 'grid', gap: '0.35rem' }}>
-          {LAYERS.map(l => (
-            <label
-              key={l.key}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                cursor: 'pointer',
-                fontSize: '0.85rem',
-                padding: '0.25rem 0',
-                color: layers[l.key] ? '#e2e8f0' : '#64748b'
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={!!layers[l.key]}
-                onChange={() => onChange(prev => ({ ...prev, [l.key]: !prev[l.key] }))}
-              />
-              <span style={{
-                display: 'inline-block',
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: l.color,
-                opacity: layers[l.key] ? 1 : 0.3
-              }} />
-              {l.label}
-            </label>
-          ))}
+          {LAYERS.map(l => {
+            const active = !!layers[l.key]
+            return (
+              <label
+                key={l.key}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  padding: '0.25rem 0',
+                  color: active ? 'var(--color-text)' : 'var(--color-text-muted)'
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={active}
+                  onChange={() => onChange(prev => ({ ...prev, [l.key]: !prev[l.key] }))}
+                />
+                <span style={{
+                  display: 'inline-block',
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: l.color,
+                  opacity: active ? 1 : 0.3
+                }} />
+                {l.label}
+              </label>
+            )
+          })}
         </div>
 
         <div style={{
           marginTop: '0.75rem',
           paddingTop: '0.75rem',
-          borderTop: '1px solid #334155',
+          borderTop: '1px solid var(--color-border)',
           display: 'grid',
           gap: '0.5rem'
         }}>
-          <label style={{ display: 'grid', gap: '0.25rem', fontSize: '0.78rem', color: '#cbd5e1' }}>
-            <span>Refresh interval</span>
+          <label className="form-group" style={{ margin: 0 }}>
+            <span className="form-label">Refresh interval</span>
             <select
               value={refreshSeconds}
               onChange={(event) => onRefreshSecondsChange(Number(event.target.value))}
-              style={{
-                background: '#0f172a',
-                color: '#e2e8f0',
-                border: '1px solid #334155',
-                borderRadius: 6,
-                padding: '0.45rem 0.5rem',
-                fontSize: '0.82rem'
-              }}
+              className="select"
             >
               {refreshOptions.map(seconds => (
                 <option key={seconds} value={seconds}>{seconds} seconds</option>
@@ -122,8 +119,8 @@ export default function LayerPanel({
             </select>
           </label>
 
-          <div style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>
-            <div style={{ color: '#94a3b8', marginBottom: '0.15rem' }}>Current ET time</div>
+          <div style={{ fontSize: '0.78rem', color: 'var(--color-slate-300)' }}>
+            <div className="text-muted" style={{ marginBottom: '0.15rem' }}>Current ET time</div>
             <div style={{ fontWeight: 600 }}>{currentTimeLabel}</div>
           </div>
         </div>
@@ -131,9 +128,9 @@ export default function LayerPanel({
         <div style={{
           marginTop: '0.75rem',
           paddingTop: '0.75rem',
-          borderTop: '1px solid #334155',
+          borderTop: '1px solid var(--color-border)',
           fontSize: '0.7rem',
-          color: weatherMode === 'fallback' ? '#fbbf24' : weatherMode === 'live' ? '#4ade80' : '#94a3b8'
+          color: weatherMode === 'fallback' ? 'var(--color-yellow-400)' : weatherMode === 'live' ? 'var(--color-green-400)' : 'var(--color-text-muted)'
         }}>
           {weatherStatus}
         </div>
