@@ -119,7 +119,7 @@ export default function LayerPanel({
             </select>
           </label>
 
-          <div style={{ fontSize: '0.78rem', color: 'var(--color-slate-300)' }}>
+          <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>
             <div className="text-muted" style={{ marginBottom: '0.15rem' }}>Current ET time</div>
             <div style={{ fontWeight: 600 }}>{currentTimeLabel}</div>
           </div>
