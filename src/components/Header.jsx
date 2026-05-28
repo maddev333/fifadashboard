@@ -13,10 +13,10 @@ export default function Header() {
 
   return (
     <header style={{
-      background: '#0f172a',
+      background: 'var(--surface-bg)',
       color: 'white',
       padding: '0.75rem 1rem',
-      borderBottom: '1px solid #1e293b'
+      borderBottom: '1px solid var(--color-border)'
     }}>
       <div style={{
         maxWidth: 1200,
@@ -28,13 +28,13 @@ export default function Header() {
         gap: '0.5rem'
       }}>
         <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>⚽ World Cup Ops</div>
-        <nav style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <nav aria-label="Primary" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           {links.map(l => (
             <Link
               key={l.to}
               to={l.to}
               style={{
-                color: pathname === l.to ? '#38bdf8' : '#cbd5e1',
+                color: pathname === l.to ? 'var(--color-accent)' : 'var(--color-slate-300)',
                 textDecoration: 'none',
                 fontSize: '0.9rem',
                 fontWeight: pathname === l.to ? 600 : 400

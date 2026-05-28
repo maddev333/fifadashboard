@@ -9,6 +9,11 @@ const DEFAULT_ALL_VENUES_ZOOM = 3
 const FOCUSED_WEATHER_RADIUS_METERS = 25000
 const WEATHER_OVERLAY_ID = 'weather-radar-overlay'
 
+/*
+ * The colors below are map rendering values passed to the Azure Maps
+ * bubble/ symbol layers. They are not CSS styles and do not participate
+ * in the component theme token system.
+ */
 function getWeatherColor(condition) {
   switch (condition) {
     case 'Storm': return '#8b5cf6'
@@ -297,39 +302,39 @@ export default function LiveMap({
 
   if (mapInitError) {
     return (
-      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-        <div style={{ background: '#1e293b', borderRadius: 8, padding: '1.5rem', border: '1px solid #334155', maxWidth: 600, width: '100%' }}>
-          <h2 style={{ marginTop: 0, color: '#f87171' }}>Map Unavailable</h2>
-          <p style={{ color: '#cbd5e1' }}>
+      <div className="map-fallback">
+        <div className="card" style={{ maxWidth: 600, width: '100%' }}>
+          <h2 style={{ marginTop: 0, color: 'var(--color-red-400)' }}>Map Unavailable</h2>
+          <p style={{ color: 'var(--color-slate-300)' }}>
             The interactive map could not load because WebGL is disabled or unavailable in this browser.
             Try enabling hardware acceleration, or use a different browser/device.
           </p>
-          <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>{mapInitError}</p>
+          <p className="text-muted" style={{ fontSize: '0.875rem' }}>{mapInitError}</p>
           {nextMatchCountdown && (
-            <p style={{ color: '#fdba74', fontSize: '0.95rem', fontWeight: 700 }}>
+            <p style={{ color: 'var(--color-orange-400)', fontSize: '0.95rem', fontWeight: 700 }}>
               Next match countdown: {nextMatchCountdown}
             </p>
           )}
-          <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="grid-2" style={{ marginTop: '1rem' }}>
             <div>
-              <h3 style={{ color: '#e2e8f0', fontSize: '1rem' }}>Host Venues ({venues.length})</h3>
+              <h3 style={{ fontSize: '1rem' }}>Host Venues ({venues.length})</h3>
               {venues.map(v => (
-                <div key={v.id} style={{ padding: '0.35rem 0', borderBottom: '1px solid #334155', color: '#e2e8f0', fontSize: '0.85rem' }}>
+                <div key={v.id} style={{ padding: '0.35rem 0', borderBottom: '1px solid var(--color-border)', fontSize: '0.85rem' }}>
                   <strong>{v.name}</strong>
-                  <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{v.city}, {v.country} • {v.matchCount || 0} matches</div>
+                  <div className="text-muted" style={{ fontSize: '0.75rem' }}>{v.city}, {v.country} • {v.matchCount || 0} matches</div>
                   {v.nextMatchCountdown && (
-                    <div style={{ fontSize: '0.75rem', color: '#fdba74' }}>Countdown: {v.nextMatchCountdown}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-orange-400)' }}>Countdown: {v.nextMatchCountdown}</div>
                   )}
                 </div>
               ))}
             </div>
             <div>
-              <h3 style={{ color: '#e2e8f0', fontSize: '1rem' }}>Open Incidents</h3>
-              <div style={{ color: '#e2e8f0', fontSize: '0.85rem' }}>{incidents.filter(i => i.status === 'open').length} active incidents</div>
-              <h3 style={{ color: '#e2e8f0', fontSize: '1rem', marginTop: '1rem' }}>Matchday Venues</h3>
-              <div style={{ color: '#e2e8f0', fontSize: '0.85rem' }}>{todayMatches.length} matches on the selected schedule day</div>
-              <h3 style={{ color: '#e2e8f0', fontSize: '1rem', marginTop: '1rem' }}>Weather Signals</h3>
-              <div style={{ color: '#e2e8f0', fontSize: '0.85rem' }}>{visibleWeatherSignals.length} venue weather markers</div>
+              <h3 style={{ fontSize: '1rem' }}>Open Incidents</h3>
+              <div style={{ fontSize: '0.85rem' }}>{incidents.filter(i => i.status === 'open').length} active incidents</div>
+              <h3 style={{ fontSize: '1rem', marginTop: '1rem' }}>Matchday Venues</h3>
+              <div style={{ fontSize: '0.85rem' }}>{todayMatches.length} matches on the selected schedule day</div>
+              <h3 style={{ fontSize: '1rem', marginTop: '1rem' }}>Weather Signals</h3>
+              <div style={{ fontSize: '0.85rem' }}>{visibleWeatherSignals.length} venue weather markers</div>
             </div>
           </div>
         </div>

@@ -6,18 +6,18 @@ import Admin from './pages/Admin'
 
 function AdminLayout() {
   return (
-    <div style={{ minHeight: '100vh', background: '#0f172a', color: '#e2e8f0' }}>
-      <div style={{
-        background: '#0f172a',
+    <div style={{ minHeight: '100dvh', background: 'var(--surface-bg)', color: 'var(--color-text)' }}>
+      <nav aria-label="Admin breadcrumb" style={{
+        background: 'var(--surface-bg)',
         padding: '0.75rem 1rem',
-        borderBottom: '1px solid #1e293b',
+        borderBottom: '1px solid var(--color-border)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between'
       }}>
-        <Link to="/" style={{ color: '#38bdf8', textDecoration: 'none', fontWeight: 600 }}>← Back to Map</Link>
+        <Link to="/" style={{ textDecoration: 'none', fontWeight: 600 }}>← Back to Map</Link>
         <div style={{ fontWeight: 700 }}>Admin</div>
-      </div>
+      </nav>
       <main style={{ padding: '1rem' }}>
         <Admin />
       </main>
